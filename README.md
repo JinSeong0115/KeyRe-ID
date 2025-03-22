@@ -14,10 +14,20 @@ Clone the repository to your local machine:
 ```bash
 git clone https://github.com/JinSeong0115/KeyTransReID.git
 cd KeyTransReID
+```
 
-## 🚀 Usage\
+## 🚀 Usage
+
 ### Training and Evaluation
 Market-1501 Dataset
 To train the model on the Market-1501 dataset:
 ```bash
 python Key_TransReID.py1 --ViT_path 'pretrained_model.pth'
+```
+
+## 🙏 Acknowledgement
+- Thanks to AishahAADU, using some implementation from [AishahAADU's repository](https://github.com/AishahAADU/VID-Trans-ReID)  
+- Thanks to VlSomers, using some implementation from [VlSomers's](https://github.com/VlSomers/keypoint_promptable_reidentification)
+
+
+

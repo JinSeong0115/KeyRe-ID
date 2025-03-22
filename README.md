@@ -27,7 +27,7 @@ python Key_TransReID.py --ViT_path 'pretrained_model.pth'
 
 ## 🙏 Acknowledgement
 - Thanks to AishahAADU, using some implementation from [AishahAADU's repository](https://github.com/AishahAADU/VID-Trans-ReID)  
-- Thanks to VlSomers, using some implementation from [VlSomers's](https://github.com/VlSomers/keypoint_promptable_reidentification)
+- Thanks to VlSomers, using some implementation from [VlSomers's repository](https://github.com/VlSomers/keypoint_promptable_reidentification)
 
 
 

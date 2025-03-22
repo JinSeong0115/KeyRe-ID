@@ -1,6 +1,6 @@
 # Key-TransReID
 
-**KeyTransReID** is a deep learning-based project for ReID (Re-Identification) tasks. This project leverages keypoints and transformer architectures to enhance person re-identification performance.
+**Key-TransReID** is a deep learning-based project for ReID (Video Re-Identification) tasks. This project leverages keypoints and transformer architectures to enhance person re-identification performance.
 
 ## 📖 Project Overview
 KeyTransReID provides the following features:

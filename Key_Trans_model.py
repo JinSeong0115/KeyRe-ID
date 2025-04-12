@@ -271,3 +271,4 @@ class KeyTransReID(nn.Module):
         self.load_state_dict(model_dict, strict=False)
         print("✅ Checkpoint loaded successfully.")
 
+# Update 2025. 04. 12. (토) 23:39:10 KST

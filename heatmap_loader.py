@@ -278,4 +278,4 @@ class Heatmap_Dataset_inderase(VideoDataset_inderase):
 #     masks_batch = torch.stack(clip_masks, dim=0)  # [B, max_clips]
     
 #     # pids, camids, img_paths는 리스트로 그대로 반환하거나 필요에 맞게 처리
-#     return imgs_batch, heatmaps_batch, pids_list, camids_list, img_paths_list, masks_batch
+#     return imgs_batch, heatmaps_batch, pids_list, camids_list, img_paths_list, masks_batch# Update 2025. 04. 12. (토) 23:39:10 KST

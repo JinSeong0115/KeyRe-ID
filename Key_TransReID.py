@@ -281,4 +281,4 @@ if __name__ == '__main__':
     plt.show()
 
     print(f"✅ Loss 로그가 저장되었습니다: {loss_log_path}")
-    print("✅ Loss 그래프가 저장되었습니다: /home/user/kim_js/ReID/KeyTransReID/loss_plot.png")
+    print("✅ Loss 그래프가 저장되었습니다: /home/user/kim_js/ReID/KeyTransReID/loss_plot.png")# Update 2025. 04. 12. (토) 23:39:10 KST

@@ -184,3 +184,4 @@ class VideoDataset_inderase(Dataset):  # train dataset
 
         return imgs, pid, camids, labels, selected_img_paths, erased_regions, transform_params_list
     
+# Update 2025. 04. 12. (토) 23:39:10 KST

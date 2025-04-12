@@ -29,15 +29,15 @@ def weights_init_classifier(m):
             nn.init.constant_(m.bias, 0.0)
       
 class KeyTransReID(nn.Module):
-    def __init__(self, num_classes, camera_num, pretrainpath, parts_num=6):  # 기본 parts_num를 6으로 수정
+    def __init__(self, num_classes, camera_num, pretrainpath, parts_num=6):
         super(KeyTransReID, self).__init__()
         self.in_planes = 768
         self.num_classes = num_classes
-        self.parts_num = parts_num  # 이제 6
+        self.parts_num = parts_num
         self.t = 4  # number of frames
         
         # fusion token
-        self.fusion_module = FusionToken(num_patches=128, embed_dim=768, cam_num=camera_num)
+        self.fusion_module = FusionToken(embed_dim=768)
         
         # TransReID backbone
         self.base = TransReID(
@@ -121,12 +121,12 @@ class KeyTransReID(nn.Module):
         self.attention_tconv.apply(weights_init_kaiming) 
         
 
-    def forward(self, fusion_tokens, cam_label=None):  # label is unused if self.cos_layer == 'no'
+    def forward(self, fusion_tokens, heatmap, cam_label=None):  # label is unused if self.cos_layer == 'no'
         t = self.t
         b = fusion_tokens.size(0) // t
         
         # Transformer
-        features = self.base.forward_fusion_tokens(fusion_tokens)  # [B*t, 129, 3072]
+        features = self.base(fusion_tokens, cam_label=cam_label) # [B*t, 129, 768]
         
         #-------------------Global Branch-------------
         b1_feat = self.b1(features)  # [B*t, 129, 768]
@@ -135,7 +135,7 @@ class KeyTransReID(nn.Module):
         global_feat = global_feat.unsqueeze(dim=2).unsqueeze(dim=3)
         a = F.relu(self.attention_conv(global_feat))
         a = a.view(b, t, self.middle_dim)
-        a = a.permute(0,2,1)
+        a = a.permute(0, 2, 1)
         a = F.relu(self.attention_tconv(a))
         a = a.view(b, t)
         a_vals = a 
@@ -145,34 +145,60 @@ class KeyTransReID(nn.Module):
         a = torch.unsqueeze(a, -1)
         a = a.expand(b, t, self.in_planes)
         att_x = torch.mul(x, a)
-        att_x = torch.sum(att_x,1)
+        att_x = torch.sum(att_x, 1)
         
         global_feat = att_x.view(b, self.in_planes)
         feat = self.bottleneck(global_feat)
         
         #-------------------Local Branch-------------
-        features = features.view(b, t, 129, 768)
-        patch_tokens = features[:, :, 1:, :]  # [B, t, 128, 768]
+        self.in_planes = 768  # 특징 차원
+        self.parts_num = 6    # 부위 개수
+
+        # 1. Features 처리
+        features = features.view(b, t, 129, 768)  # [B, T, 129, 768]
+        patch_tokens = features[:, :, 1:, :]      # [B, T, 128, 768], 클래스 토큰 제외
         patch_tokens = patch_tokens.permute(0, 2, 1, 3).contiguous().view(b, 128, t * self.in_planes)  # [B, 128, 3072]
         patch_features = patch_tokens.permute(0, 2, 1).contiguous().view(b, t * self.in_planes, 16, 8)  # [B, 3072, 16, 8]
-        
-        # Part-based head
-        pixels_cls_scores = self.pixel_classifier(patch_features)  # [B, parts_num (6), 16, 8]
-        parts_masks = F.softmax(pixels_cls_scores, dim=1)  # [B, 6, 16, 8]
-        parts_masks = parts_masks / (parts_masks.sum(dim=(2, 3), keepdim=True) + 1e-6)
-        parts_embeddings = torch.einsum('bchw, bphw -> bpc', patch_features, parts_masks)  # [B, 6, 3072]
-        
-        # Transformer Block for each part
+
+        # 2. Heatmap 처리
+        b, t, c, h, w = heatmap.shape  # [B, T, 6, 256, 128]
+        heatmap_2d = heatmap.view(b * t, c, h, w)  # [BT, 6, 256, 128]
+        parts_masks = F.interpolate(heatmap_2d, size=(16, 8), mode='bilinear')  # [BT, 6, 16, 8]
+        parts_masks = parts_masks.view(b, t, c, 16, 8).mean(dim=1)  # [B, 6, 16, 8]
+
+        # 3. 가시성 처리
+        visibility_scores = torch.amax(heatmap, dim=(3, 4)).mean(dim=1)  # [B, 6]
+        visibility_mask = visibility_scores > 0.1  # [B, 6]
+
+        # 4. 부위별 임베딩 생성
+        parts_embeddings = torch.einsum('bchw,bphw->bpc', patch_features, parts_masks)  # [B, 6, 3072]
+        parts_embeddings = parts_embeddings * visibility_mask.unsqueeze(-1)  # [B, 6, 3072]
+
+        # 5. 부위별 특징 정제
         refined_parts = []
-        for i in range(self.parts_num):  # now 6 parts
-            part_i = parts_embeddings[:, i, :]  # [B, 3072]
-            part_token = self.part_tokens[i].unsqueeze(0).expand(b, -1, -1)  # [B, 1, 3072]
-            part_seq = torch.cat([part_token, part_i.unsqueeze(1)], dim=1)  # [B, 2, 3072]
-            part_seq = self.part_transformers[i](part_seq)  # [B, 2, 3072]
-            refined_part = part_seq[:, 0, :]  # refined part embedding: [B, 3072]
+        for i in range(self.parts_num):
+            part_i = parts_embeddings[:, i, :].unsqueeze(1)  # [B, 1, 3072]
+            refined_part = self.part_transformers[i](part_i)  # [B, 1, 3072], Transformer 블록 적용
+            refined_part = refined_part.squeeze(1)  # [B, 3072]
             refined_parts.append(refined_part)
         refined_parts = torch.stack(refined_parts, dim=1)  # [B, 6, 3072]
+                
+        # # Part-based head
+        # pixels_cls_scores = self.pixel_classifier(patch_features)  # [B, parts_num(6), 16, 8]
+        # parts_masks = F.softmax(pixels_cls_scores, dim=1)  # [B, 6, 16, 8]
+        # parts_masks = parts_masks / (parts_masks.sum(dim=(2, 3), keepdim=True) + 1e-6)
+        # parts_embeddings = torch.einsum('bchw, bphw -> bpc', patch_features, parts_masks)  # [B, 6, 3072]
         
+        # # Transformer Block for each part
+        # refined_parts = []
+        # for i in range(self.parts_num):  # now 6 parts
+        #     part_i = parts_embeddings[:, i, :]  # [B, 3072]
+        #     part_token = self.part_tokens[i].unsqueeze(0).expand(b, -1, -1)  # [B, 1, 3072]
+        #     part_seq = torch.cat([part_token, part_i.unsqueeze(1)], dim=1)  # [B, 2, 3072]
+        #     part_seq = self.part_transformers[i](part_seq)  # [B, 2, 3072]
+        #     refined_part = part_seq[:, 0, :]  # refined part embedding: [B, 3072]
+        #     refined_parts.append(refined_part)
+        # refined_parts = torch.stack(refined_parts, dim=1)  # [B, 6, 3072]
         
         head_f = self.bottleneck_head(refined_parts[:, 0, :])
         torso_f = self.bottleneck_torso(refined_parts[:, 1, :])
@@ -245,38 +271,3 @@ class KeyTransReID(nn.Module):
         self.load_state_dict(model_dict, strict=False)
         print("✅ Checkpoint loaded successfully.")
 
-
-# ---------------- Debugging -------------------
-if __name__ == "__main__":
-    pretrained_weight = "/home/user/kim_js/ReID/KeyTransReID/weights/jx_vit_base_p16_224-80ecf9dd.pth"
-    num_classes = 625 
-    camera_num = 6
-    
-    model = KeyTransReID(num_classes, camera_num, pretrained_weight, parts_num=6)
-    model.load_param = lambda x, load=False: None
-    model.train() 
-    
-    fusion_tokens = torch.randn(256, 129, 768)
-    cam_label = None
-    
-    outputs = model(fusion_tokens, cam_label)
-    if model.training:
-        output_IDs, features_list, a_vals = outputs
-        print("Global_ID shape:", output_IDs[0].shape)
-        print("Head_ID shape:", output_IDs[1].shape)
-        print("Torso_ID shape:", output_IDs[2].shape)
-        print("Left_arm_ID shape:", output_IDs[3].shape)
-        print("Right_arm_ID shape:", output_IDs[4].shape)
-        print("Left_leg_ID shape:", output_IDs[5].shape)
-        print("Right_leg_ID shape:", output_IDs[6].shape)
-        print("Global feature shape:", features_list[0].shape)
-        print("Head feature shape:", features_list[1].shape)
-        print("Torso feature shape:", features_list[2].shape)
-        print("Left_arm feature shape:", features_list[3].shape)
-        print("Right_arm feature shape:", features_list[4].shape)
-        print("Left_leg feature shape:", features_list[5].shape)
-        print("Right_leg feature shape:", features_list[6].shape)
-        print("Attention values shape:", a_vals.shape)
-    else:
-        out_feat = outputs
-        print("Output feature shape:", out_feat.shape)

@@ -4,12 +4,16 @@ from torch.utils.data import DataLoader, Dataset
 from PIL import Image
 import random
 import torch
-from utility import RandomIdentitySampler,RandomErasing3
+from utility import RandomIdentitySampler, RandomErasing3
 from Datasets.MARS_dataset import Mars
+from Datasets.iLDSVID import iLIDSVID
+from Datasets.PRID_dataset import PRID
 from torchvision.transforms import InterpolationMode
 
 __factory = {
     'Mars':Mars,
+    'iLIDSVID':iLIDSVID,
+    'PRID':PRID
 }
 
 def train_collate_fn(batch):
@@ -77,10 +81,12 @@ def process_image(img_path, erase):
     img = T.ToTensor()(img)
     img = T.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])(img)
     
-    img, label, erased_region = erase(img)  # img, 0, (0, 0, 0, 0) or img, 1, (x1, y1, w, h)  
+    # img, label, erased_region = erase(img)  # img, 0, (0, 0, 0, 0) or img, 1, (x1, y1, w, h)  
+    result = erase(img)
+    img, label, erased_region = result
     img = img.unsqueeze(0)  # (C, H, W) -> (1, C, H, W)
     
-    return img, label, erased_region, transform_params          
+    return img, label, erased_region, transform_params        
 
 
 class VideoDataset(Dataset):  # test dataset
@@ -143,7 +149,8 @@ class VideoDataset_inderase(Dataset):  # train dataset
         self.dataset = dataset
         self.seq_len = seq_len
         self.max_length = max_length
-        self.erase = RandomErasing3(probability=0.5, mean=[0.485, 0.456, 0.406])         
+        self.erase = RandomErasing3(probability=0.5, mean=[0.485, 0.456, 0.406])
+        print(f"self.erase 타입: {type(self.erase)}")     
 
     def __len__(self):
         return len(self.dataset)
@@ -154,8 +161,8 @@ class VideoDataset_inderase(Dataset):  # train dataset
         indices = []
         each = max(num//self.seq_len, 1)
         
-        for  i in range(self.seq_len):
-            if i != self.seq_len -1:
+        for i in range(self.seq_len):
+            if i != self.seq_len-1:
                 indices.append(random.randint(min(i*each, num-1), min((i+1)*each-1, num-1)))
             else:
                 indices.append(random.randint(min(i*each, num-1), num-1))
@@ -184,4 +191,3 @@ class VideoDataset_inderase(Dataset):  # train dataset
 
         return imgs, pid, camids, labels, selected_img_paths, erased_regions, transform_params_list
     
-# Update 2025. 04. 12. (토) 23:39:10 KST

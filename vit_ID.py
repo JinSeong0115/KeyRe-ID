@@ -6,6 +6,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import collections.abc
 
+
 # From PyTorch internals
 def _ntuple(n):
     def parse(x):
@@ -19,7 +20,15 @@ IMAGENET_DEFAULT_STD = (0.229, 0.224, 0.225)
 to_2tuple = _ntuple(2)
 
 def drop_path(x, drop_prob: float = 0., training: bool = False):
-    """Drop paths (Stochastic Depth) per sample (when applied in main path of residual blocks)"""
+    """Drop paths (Stochastic Depth) per sample (when applied in main path of residual blocks).
+
+    This is the same as the DropConnect impl I created for EfficientNet, etc networks, however,
+    the original name is misleading as 'Drop Connect' is a different form of dropout in a separate paper...
+    See discussion: https://github.com/tensorflow/tpu/issues/494#issuecomment-532968956 ... I've opted for
+    changing the layer and argument names to 'drop path' rather than mix DropConnect as a layer name and use
+    'survival rate' as the argument.
+
+    """
     if drop_prob == 0. or not training:
         return x
     keep_prob = 1 - drop_prob
@@ -30,7 +39,7 @@ def drop_path(x, drop_prob: float = 0., training: bool = False):
     return output
 
 class DropPath(nn.Module):
-    """Drop paths (Stochastic Depth) per sample  (when applied in main path of residual blocks)"""
+    """Drop paths (Stochastic Depth) per sample  (when applied in main path of residual blocks)."""
     def __init__(self, drop_prob=None):
         super(DropPath, self).__init__()
         self.drop_prob = drop_prob
@@ -85,7 +94,7 @@ class Attention(nn.Module):
 
 class Block(nn.Module):
     def __init__(self, dim, num_heads, mlp_ratio=4., qkv_bias=False, qk_scale=None, drop=0., attn_drop=0.,
-                drop_path=0., act_layer=nn.GELU, norm_layer=nn.LayerNorm):
+                 drop_path=0., act_layer=nn.GELU, norm_layer=nn.LayerNorm):
         super().__init__()
         self.norm1 = norm_layer(dim)
         self.attn = Attention(
@@ -102,7 +111,8 @@ class Block(nn.Module):
         return x
 
 class PatchEmbed(nn.Module):
-    """ Image to Patch Embedding"""
+    """ Image to Patch Embedding
+    """
     def __init__(self, img_size=224, patch_size=16, in_chans=3, embed_dim=768):
         super().__init__()
         img_size = to_2tuple(img_size)
@@ -163,24 +173,25 @@ class PatchEmbed_overlap(nn.Module):
 class TransReID(nn.Module):
     """ Transformer-based Object Re-Identification"""
     def __init__(self, img_size=224, patch_size=16, stride_size=16, in_chans=3, num_classes=1000, embed_dim=768, depth=12,
-                num_heads=12, mlp_ratio=4., qkv_bias=False, qk_scale=None, drop_rate=0., attn_drop_rate=0., camera=0, 
-                drop_path_rate=0., hybrid_backbone=None, norm_layer=nn.LayerNorm, cam_lambda =3.0):
+                 num_heads=12, mlp_ratio=4., qkv_bias=False, qk_scale=None, drop_rate=0., attn_drop_rate=0., camera=0, 
+                 drop_path_rate=0., hybrid_backbone=None, norm_layer=nn.LayerNorm, cam_lambda =3.0):
         super().__init__()
         self.num_classes = num_classes
-        self.embed_dim = embed_dim
+        self.num_features = self.embed_dim = embed_dim  # num_features for consistency with other models
         self.cam_num = camera
         self.cam_lambda = cam_lambda
+
 
         self.patch_embed = PatchEmbed_overlap(img_size=img_size, patch_size=patch_size, stride_size=stride_size, in_chans=in_chans,embed_dim=embed_dim)
         num_patches = self.patch_embed.num_patches
 
-        self.pos_embed = nn.Parameter(torch.zeros(1, num_patches + 1, embed_dim))
         self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
+        self.pos_embed = nn.Parameter(torch.zeros(1, num_patches + 1, embed_dim))
         self.Cam = nn.Parameter(torch.zeros(camera, 1, embed_dim))
 
         trunc_normal_(self.Cam, std=.02)
         self.pos_drop = nn.Dropout(p=drop_rate)
-        dpr = [x.item() for x in torch.linspace(0, drop_path_rate, depth)]  # Drop Path Regularization(stochastic depth decay rule) 
+        dpr = [x.item() for x in torch.linspace(0, drop_path_rate, depth)]  # stochastic depth decay rule
 
         self.blocks = nn.ModuleList([
             Block(
@@ -218,100 +229,87 @@ class TransReID(nn.Module):
         self.fc = nn.Linear(self.embed_dim, num_classes) if num_classes > 0 else nn.Identity()
 
     def forward_features(self, x, camera_id):
-        # 만약 입력이 3D이면, 이미 fusion token (CLS + patch tokens)이라고 가정하고 그대로 반환
-        if x.dim() == 3:
-            return x     
-        # CNN Output 형태 → Transformer 입력 형태
-        B, C, H, W = x.shape
-        x = x.view(B, -1, 768)  # Transformer에 맞게 변경
+        B = x.shape[0]
+        x = self.patch_embed(x)
+        
+        cls_tokens = self.cls_token.expand(B, -1, -1)  # stole cls_tokens impl from Phil Wang, thanks
+        x = torch.cat((cls_tokens, x), dim=1)
+        x = x + self.pos_embed + self.cam_lambda * self.Cam[camera_id]
+        x = self.pos_drop(x)
 
-        # camera_id 범위 보정
-        camera_id = torch.clamp(camera_id, min=0, max=self.Cam.shape[0] - 1)
-
-        # self.Cam의 크기 맞추기 (B, 1, 768 → B, num_tokens, 768)
-        cam_embedding = self.Cam[camera_id].squeeze(1)  # [B, 768]
-        cam_embedding = cam_embedding.unsqueeze(1).expand(-1, x.shape[1], -1)  # [B, num_tokens, 768]
-
-        # Transformer 입력에 추가 정보 적용
-        x = x + self.pos_embed[:, :x.shape[1], :] + self.cam_lambda * cam_embedding
+        for blk in self.blocks[:-1]:
+                x = blk(x)
         return x
-
+        
     def forward(self, x, cam_label=None):
         x = self.forward_features(x, cam_label)
         return x
 
-    def forward_fusion_tokens(self, tokens):
-        x = self.pos_drop(tokens) 
-        for blk in self.blocks[:-1]:
-            x = blk(x)
-        return x
-
-    def load_param(self, model_path,load=False):
+    def load_param(self, model_path, load=False):
+        print("Run load_param")
         if not load:
             param_dict = torch.load(model_path, map_location='cpu')
         else:
-            param_dict=  model_path  
+            param_dict = model_path
+
         if 'model' in param_dict:
             param_dict = param_dict['model']
         if 'state_dict' in param_dict:
             param_dict = param_dict['state_dict']
+
+        model_dict = self.state_dict()
+        new_param_dict = {}
+
         for k, v in param_dict.items():
             if 'head' in k or 'dist' in k:
                 continue
-            if 'patch_embed.proj.weight' in k and len(v.shape) < 4:
-                # For old models that I trained prior to conv based patchification
-                O, I, H, W = self.patch_embed.proj.weight.shape
-                v = v.reshape(O, -1, H, W)
-            elif k == 'pos_embed' and v.shape != self.pos_embed.shape:
-                # To resize pos embedding when using model at different size from pretrained weights
-                if 'distilled' in model_path:
-                    print('distill need to choose right cls token in the pth')
-                    v = torch.cat([v[:, 0:1], v[:, 2:]], dim=1)
-                v = resize_pos_embed(v, self.pos_embed, self.patch_embed.num_y, self.patch_embed.num_x)
-            try:
-                self.state_dict()[k].copy_(v)
-            except:
-                print('===========================ERROR=========================')
-                print('shape do not match in k :{}: param_dict{} vs self.state_dict(){}'.format(k, v.shape, self.state_dict()[k].shape))
+
+            if k in ['Cam', 'base.Cam'] and k in model_dict:
+                expected_shape = model_dict[k].shape
+                if v.shape[0] > expected_shape[0]:
+                    print(f"⚠️ Resizing '{k}' from {v.shape} to {expected_shape}")
+                    v = v[:expected_shape[0], :, :]
+                elif v.shape[0] < expected_shape[0]:
+                    print(f"⚠️ Expanding '{k}' from {v.shape} to {expected_shape}")
+                    new_v = torch.randn(expected_shape)
+                    new_v[:v.shape[0], :, :] = v
+                    v = new_v
+                new_param_dict[k] = v
+                continue
+
+            if k in model_dict and model_dict[k].shape == v.shape:
+                new_param_dict[k] = v
+
+        model_dict.update(new_param_dict)
+        self.load_state_dict(model_dict, strict=False)
+        print("✅ Checkpoint loaded successfully.")
 
 def resize_pos_embed(posemb, posemb_new, hight, width):
+    # Rescale the grid of position embeddings when loading from state_dict. Adapted from
+    # https://github.com/google-research/vision_transformer/blob/00883dd691c63a6830751563748663526e811cee/vit_jax/checkpoint.py#L224
     ntok_new = posemb_new.shape[1]
 
-    # 기존 토큰 및 그리드 추출
-    posemb_token, posemb_grid = posemb[:, :1], posemb[:, 1:]
+    posemb_token, posemb_grid = posemb[:, :1], posemb[0, 1:]
     ntok_new -= 1
 
-    # 기존 그리드 크기 계산
-    gs_old = int(math.sqrt(posemb_grid.shape[1]))
-    print(f"Original grid size: {gs_old}x{gs_old}")
-
-    # 새로운 그리드 크기 설정
-    gs_new = (hight, width)
-    print(f"New grid size: {gs_new[0]}x{gs_new[1]}")
-
-    # 기존 그리드를 재구성하여 리사이즈
+    gs_old = int(math.sqrt(len(posemb_grid)))
+    print('Resized position embedding from size:{} to size: {} with height:{} width: {}'.format(posemb.shape, posemb_new.shape, hight, width))
     posemb_grid = posemb_grid.reshape(1, gs_old, gs_old, -1).permute(0, 3, 1, 2)
-    posemb_grid = F.interpolate(posemb_grid, size=gs_new, mode='bilinear', align_corners=False)
+    posemb_grid = F.interpolate(posemb_grid, size=(hight, width), mode='bilinear')
     posemb_grid = posemb_grid.permute(0, 2, 3, 1).reshape(1, hight * width, -1)
-
-    # 리사이즈 후 크기 확인
-    print(f"Posemb grid shape after interpolation: {posemb_grid.shape}")
-
-    # 최종 위치 임베딩 생성
     posemb = torch.cat([posemb_token, posemb_grid], dim=1)
-    print(f"Resized posemb shape: {posemb.shape}, Expected posemb_new shape: {posemb_new.shape}")
-
-    # 크기 확인
-    assert posemb.shape == posemb_new.shape, f"Resized posemb shape mismatch: {posemb.shape} vs {posemb_new.shape}"
     return posemb
 
 def _no_grad_trunc_normal_(tensor, mean, std, a, b):
+    # Cut & paste from PyTorch official master until it's in a few official releases - RW
+    # Method based on https://people.sc.fsu.edu/~jburkardt/presentations/truncated_normal.pdf
     def norm_cdf(x):
         # Computes standard normal cumulative distribution function
         return (1. + math.erf(x / math.sqrt(2.))) / 2.
 
     if (mean < a - 2 * std) or (mean > b + 2 * std):
-        print("mean is more than 2 std from [a, b] in nn.init.trunc_normal_. ", "The distribution of values may be incorrect.")
+        print("mean is more than 2 std from [a, b] in nn.init.trunc_normal_. "
+                      "The distribution of values may be incorrect.",)
 
     with torch.no_grad():
         # Values are generated by using a truncated uniform distribution and
@@ -336,6 +334,23 @@ def _no_grad_trunc_normal_(tensor, mean, std, a, b):
         tensor.clamp_(min=a, max=b)
         return tensor
 
+
 def trunc_normal_(tensor, mean=0., std=1., a=-2., b=2.):
     # type: (Tensor, float, float, float, float) -> Tensor
+    r"""Fills the input Tensor with values drawn from a truncated
+    normal distribution. The values are effectively drawn from the
+    normal distribution :math:`\mathcal{N}(\text{mean}, \text{std}^2)`
+    with values outside :math:`[a, b]` redrawn until they are within
+    the bounds. The method used for generating the random values works
+    best when :math:`a \leq \text{mean} \leq b`.
+    Args:
+        tensor: an n-dimensional `torch.Tensor`
+        mean: the mean of the normal distribution
+        std: the standard deviation of the normal distribution
+        a: the minimum cutoff value
+        b: the maximum cutoff value
+    Examples:
+        >>> w = torch.empty(3, 5)
+        >>> nn.init.trunc_normal_(w)
+    """
     return _no_grad_trunc_normal_(tensor, mean, std, a, b)

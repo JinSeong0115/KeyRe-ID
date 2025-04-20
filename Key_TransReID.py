@@ -1,17 +1,20 @@
 import os
 import argparse
+import logging
 import time
 import random
 import numpy as np
 import matplotlib.pyplot as plt
 import torch
+import torch.nn as nn
 from torch.cuda import amp
+import torch.distributed as dist
 from torch_ema import ExponentialMovingAverage
+from Dataloader import dataloader
 from heatmap_loader import heatmap_dataloader
-from Key_Trans_model import KeyTransReID 
+from Key_Trans_model import Key_Trans
 from Loss_fun import make_loss
 from utility import AverageMeter, optimizer, scheduler
-from vit_ID import PatchEmbed_overlap
 
 def evaluate(distmat, q_pids, g_pids, q_camids, g_camids, max_rank=21):
     num_q, num_g = distmat.shape
@@ -59,8 +62,8 @@ def evaluate(distmat, q_pids, g_pids, q_camids, g_camids, max_rank=21):
 
     return all_cmc, mAP
 
-def test(model, queryloader, galleryloader, img_patch_embed, heatmap_patch_embed, pool='avg', use_gpu=True):
-    model.eval()
+def test(model, queryloader, galleryloader, pool='avg', use_gpu=True):
+    model.eval()    
     with torch.no_grad():
         # ----- Query ----- #
         qf, q_pids, q_camids = [], [], []
@@ -70,29 +73,19 @@ def test(model, queryloader, galleryloader, img_patch_embed, heatmap_patch_embed
                 heatmaps = heatmaps.cuda()
 
             b, s, c, h, w = imgs.size()
-            BT = b * s
-            images_reshaped = imgs.view(BT, c, h, w)
-            img_tokens = img_patch_embed(images_reshaped)
-            heatmaps_reshaped = heatmaps.view(BT, heatmaps.size(2), h, w)
-            heatmap_tokens = heatmap_patch_embed(heatmaps_reshaped)
+            features = model(imgs, heatmaps, pids, cam_label=camids)
+
+            features = features.view(b, -1)
+            features = torch.mean(features, dim=0)  # (b, feat_dim) → (feat_dim, )
+            features = features.cpu()
             
-            fusion_tokens = model.fusion_module(img_tokens, heatmap_tokens)
-            
-            features = model(fusion_tokens, heatmaps, cam_label=camids)
-            features = features.view(b, -1)  # [B, feature_dim]
-            
-            if pool == 'avg':
-                features = torch.mean(features, dim=0)  # [feature_dim]
-            else:
-                features, _ = torch.max(features, dim=0)  # [feature_dim]
-                
             qf.append(features)
             q_pids.append(pids)
             q_camids.extend(camids)
 
-        qf = torch.stack(qf).cuda()
-        q_pids = np.asarray(q_pids, dtype=np.int64)
-        q_camids = np.asarray(q_camids, dtype=np.int64)
+        qf = torch.stack(qf)
+        q_pids = np.asarray(q_pids)
+        q_camids = np.asarray(q_camids)
         print("Extracted features for query set, obtained {}-by-{} matrix".format(qf.size(0), qf.size(1)))
 
         # ----- Gallery ----- #
@@ -103,54 +96,53 @@ def test(model, queryloader, galleryloader, img_patch_embed, heatmap_patch_embed
                 heatmaps = heatmaps.cuda()
 
             b, s, c, h, w = imgs.size()
-            BT = b * s
-            images_reshaped = imgs.view(BT, c, h, w)
-            img_tokens = img_patch_embed(images_reshaped)
-            heatmaps_reshaped = heatmaps.view(BT, heatmaps.size(2), h, w)
-            heatmap_tokens = heatmap_patch_embed(heatmaps_reshaped)
+            features = model(imgs, heatmaps, pids, cam_label=camids)
             
-            fusion_tokens = model.fusion_module(img_tokens, heatmap_tokens)
-            
-            features = model(fusion_tokens, heatmaps, cam_label=camids)
-            features = features.view(b, -1)  # [B, feature_dim]
-            
-            if pool == 'avg':
-                features = torch.mean(features, dim=0)  # [feature_dim]
-            else:
-                features, _ = torch.max(features, dim=0)  # [feature_dim]
-                
+            features = features.view(b, -1)
+            features = torch.mean(features, dim=0)  # (b, feat_dim) → (feat_dim, )
+            features = features.cpu() 
+
             gf.append(features)
             g_pids.append(pids)
             g_camids.extend(camids)
+    gf = torch.stack(gf)
+    g_pids = np.asarray(g_pids)
+    g_camids = np.asarray(g_camids)
 
-        # 모든 갤러리 특징 텐서를 연결
-        gf = torch.stack(gf).cuda()
-        g_pids = np.asarray(g_pids, dtype=np.int64)
-        g_camids = np.asarray(g_camids, dtype=np.int64)
-        print("Extracted features for gallery set, obtained {}-by-{} matrix".format(gf.size(0), gf.size(1)))
+    print("Extracted features for gallery set, obtained {}-by-{} matrix".format(gf.size(0), gf.size(1)))
 
-        # ----- Distance matrix calculation ----- #
-        distmat = torch.cdist(qf, gf, p=2).cpu().numpy()  # euclidean distance
-        
-        # ----- CMC, mAP calculation ----- #
-        print("Original Computing CMC and mAP")
-        cmc, mean_ap = evaluate(distmat, q_pids, g_pids, q_camids, g_camids)
-        
-        print("Results ---------- ")
-        print("mAP: {:.1%} ".format(mean_ap))
-        print("CMC curve r1:", cmc[0])
-        
-        return cmc[0], mean_ap
+    # ----- Distance matrix ----- #
+    print("Computing distance matrix")
+    m, n = qf.size(0), gf.size(0)
+    distmat = (
+        torch.pow(qf, 2).sum(dim=1, keepdim=True).expand(m, n) +
+        torch.pow(gf, 2).sum(dim=1, keepdim=True).expand(n, m).t()
+    )
+    distmat.addmm_(qf, gf.t(), beta=1, alpha=-2)
+
+    distmat = distmat.numpy()
+    gf = gf.numpy()
+    qf = qf.numpy()
+
+    print("Original Computing CMC and mAP")
+    cmc, mean_ap = evaluate(distmat, q_pids, g_pids, q_camids, g_camids)
+    
+    print("Results ---------- ")
+    print("mAP: {:.1%} ".format(mean_ap))
+    print("CMC curve r1:", cmc[0])
+    
+    return cmc[0], mean_ap
+
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Key Trans-ReID Training")
+    parser = argparse.ArgumentParser(description="Key-TransReID")
     parser.add_argument("--Dataset_name", default="Mars", help="The name of the DataSet", type=str)
-    parser.add_argument('--ViT_path', default="/home/user/kim_js/ReID/VidTansReID/jx_vit_base_p16_224-80ecf9dd.pth", type=str, required=True, help='Path to the pre-trained Vision Transformer model')
+    parser.add_argument('--ViT_path', default="/home/user/kim_js/ReID/KeyTransReID/weights/jx_vit_base_p16_224-80ecf9dd.pth", type=str, required=True, help='Path to the pre-trained Vision Transformer model')
     args = parser.parse_args()
     
     pretrainpath = str(args.ViT_path)
     Dataset_name = args.Dataset_name
-    
+
     # ---- Set Seeds ----
     torch.manual_seed(1234)
     torch.cuda.manual_seed(1234)
@@ -160,79 +152,63 @@ if __name__ == '__main__':
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = True
     
-    # Data & Model
-    heatmap_train_loader, num_query, num_classes, camera_num, num_train, q_val_set, g_val_set = heatmap_dataloader(Dataset_name)
-    
-    print(f"✅ 현재 데이터셋의 camera_num: {camera_num}")
-    
-    model = KeyTransReID(num_classes=num_classes, camera_num=camera_num, pretrainpath=pretrainpath)
+    # ---- Data & Model ----
+    heatmap_train_loader, _, num_classes, camera_num, _, q_val_set, g_val_set = heatmap_dataloader(Dataset_name)
+
+    model = Key_Trans(num_classes=num_classes, camera_num=camera_num, pretrainpath=pretrainpath)
     print("🚀 Running load_param")
     model.load_param(pretrainpath)
     
     loss_fun, center_criterion = make_loss(num_classes=num_classes)
-    # optimizer_center = torch.optim.SGD(center_criterion.parameters(), lr=0.5)
-    optimizer_center = torch.optim.SGD(center_criterion.parameters(), lr=0.0001)
-
+    optimizer_center = torch.optim.SGD(center_criterion.parameters(), lr=0.5)
+    
     optimizer = optimizer(model)
     scheduler = scheduler(optimizer)
     scaler = amp.GradScaler()
-      
+
     # ---- Train Setup ----
+    device = "cuda"
     epochs = 120
-    device = "cuda" if torch.cuda.is_available() else "cpu"
     model = model.to(device)
     ema = ExponentialMovingAverage(model.parameters(), decay=0.995)
     loss_meter = AverageMeter()
-    acc_meter = AverageMeter()    
+    acc_meter = AverageMeter()
     cmc_rank1 = 0
+    map = 0
     loss_history = []
-    loss_log_path = "/home/user/kim_js/ReID/KeyTransReID/loss/loss_log.txt"
-    
-    # Patch Embedding Modules
-    img_patch_embed = PatchEmbed_overlap(img_size=(256, 128), patch_size=(16, 16), stride_size=16, in_chans=3, embed_dim=768)
-    heatmap_patch_embed = PatchEmbed_overlap(img_size=(256, 128), patch_size=(16, 16), stride_size=16, in_chans=6, embed_dim=768)
-    img_patch_embed = img_patch_embed.to(device)
-    heatmap_patch_embed = heatmap_patch_embed.to(device)
-    
+    loss_log_path = "/home/user/kim_js/ReID/KeyTransReID/loss/loss_log_best.txt"
+    loss_graph_path = "/home/user/kim_js/ReID/KeyTransReID/loss/loss_plot_best.png"
+
     for epoch in range(1, epochs + 1):
         start_time = time.time()
         loss_meter.reset()
         acc_meter.reset()
         scheduler.step(epoch)
-        model.train()  
-        
-        for Epoch_n, (imgs, heatmaps, pid, camids, erasing_labels) in enumerate(heatmap_train_loader):
+        model.train()
+
+        for Epoch_n, (imgs, heatmaps, pid, target_cam, labels2) in enumerate(heatmap_train_loader):
             optimizer.zero_grad()
             optimizer_center.zero_grad()
-
+            
             imgs = imgs.to(device)
             heatmaps = heatmaps.to(device)
             pid = pid.to(device)
-            camids = camids.to(device)
-            erasing_labels = erasing_labels.to(device)
-
-            b, s, c, h, w = imgs.size()
-            BT = b * s
-            images_reshaped = imgs.view(BT, c, h, w)
-            img_tokens = img_patch_embed(images_reshaped)
-            heatmaps_reshaped = heatmaps.view(BT, heatmaps.size(2), h, w)
-            heatmap_tokens = heatmap_patch_embed(heatmaps_reshaped)
-            cam_labels = camids.clone().detach().view(BT).to(device)
-            
-            fusion_tokens = model.fusion_module(img_tokens, heatmap_tokens)
+            target_cam = target_cam.to(device)
+            labels2 = labels2.to(device)
 
             with amp.autocast(enabled=True):
-                score, feat, a_vals = model(fusion_tokens, heatmaps, cam_label=cam_labels)
-                attn_noise = a_vals * erasing_labels
+                target_cam = target_cam.view(-1)
+                score, feat, a_vals = model(imgs, heatmaps, pid, cam_label=target_cam)
+                attn_noise = a_vals * labels2
                 attn_loss = attn_noise.sum(dim=1).mean()
-                loss_id, center = loss_fun(score, feat, pid)
+                loss_id, center = loss_fun(score, feat, pid, target_cam)
                 loss = loss_id + 0.0005 * center + attn_loss
 
             scaler.scale(loss).backward()
             scaler.step(optimizer)
             scaler.update()
             ema.update()
-
+            
             for param in center_criterion.parameters():
                 param.grad.data *= (1. / 0.0005)
             scaler.step(optimizer_center)
@@ -246,30 +222,44 @@ if __name__ == '__main__':
             loss_meter.update(loss.item(), imgs.shape[0])
             acc_meter.update(acc, 1)
 
+            # ---- Logging Loss ----
             loss_history.append(loss.item())
-            if (Epoch_n + 1) % 100 == 0:
+            if (Epoch_n+1) % 200 == 0:
                 with open(loss_log_path, "a") as f:
-                    f.write(f"Epoch {epoch}, Iteration {Epoch_n + 1}, Loss: {loss.item():.6f}, Acc: {acc_meter.avg:.3f}\n")
-            torch.cuda.synchronize()
-            if (Epoch_n + 1) % 200 == 0:
-                print(f"Epoch[{epoch}] Iteration[{Epoch_n + 1}/{len(heatmap_train_loader)}] Loss: {loss_meter.avg:.3f}, Acc: {acc_meter.avg:.3f}, Base Lr: {scheduler._get_lr(epoch)[0]:.2e}")
+                    f.write(f"Epoch {epoch}, Iteration {Epoch_n+1}, Loss: {loss.item():.6f}, Acc: {acc_meter.avg:.3f}\n")
 
-        if (epoch + 1) % 10 == 0:
+            torch.cuda.synchronize()
+            if (Epoch_n+1) % 400 == 0:
+                print("Epoch[{}] Iteration[{}/{}] Loss: {:.3f}, Acc: {:.3f}, Base Lr: {:.2e}".format(epoch, (Epoch_n+1), len(heatmap_train_loader), loss_meter.avg, acc_meter.avg, scheduler._get_lr(epoch)[0]))
+
+        # ---- Evaluation every 10 epochs ----
+        if (epoch >= 20) and (epoch % 5) == 0:
             model.eval()
-            cmc, mAP = test(model, q_val_set, g_val_set, img_patch_embed, heatmap_patch_embed)
-            print(f'CMC: {cmc:.4f}, mAP: {mAP:.4f}')
-            
+            cmc, mAP = test(model, q_val_set, g_val_set)
+            print('CMC: %.4f, mAP : %.4f' % (cmc, mAP))
+
             save_dir = '/home/user/kim_js/ReID/KeyTransReID/evaluate'
             os.makedirs(save_dir, exist_ok=True)
-            save_path = os.path.join(save_dir, 'matrix.txt')
+            save_path = os.path.join(save_dir, 'matrix_best.txt')
             with open(save_path, 'a') as f:
-                f.write(f'Epoch {epoch + 1}: CMC = {cmc:.4f}, mAP = {mAP:.4f}\n')
-                
+                f.write(f'Epoch {epoch}: CMC = {cmc:.4f}, mAP = {mAP:.4f}\n')
+            
             if cmc_rank1 < cmc:
                 cmc_rank1 = cmc
-                save_path = os.path.join('/home/user/kim_js/ReID/KeyTransReID/weights', f'{Dataset_name}_Main_Model.pth')
+                save_path = os.path.join(
+                    '/home/user/kim_js/ReID/KeyTransReID/weights',
+                    Dataset_name + 'best_CMC.pth'
+                )
+                torch.save(model.state_dict(), save_path)
+            if map < mAP:
+                map = mAP
+                save_path = os.path.join(
+                    '/home/user/kim_js/ReID/KeyTransReID/weights',
+                    Dataset_name + 'best_mAP.pth'
+                )
                 torch.save(model.state_dict(), save_path)
 
+    # ---- Plot & Save Loss Curve ----
     plt.figure(figsize=(10, 5))
     plt.plot(loss_history, label="Training Loss")
     plt.xlabel("Iterations")
@@ -277,8 +267,8 @@ if __name__ == '__main__':
     plt.title("Training Loss Over Time")
     plt.legend()
     plt.grid()
-    plt.savefig("/home/user/kim_js/ReID/KeyTransReID/loss_plot.png")
+    plt.savefig(loss_graph_path)
     plt.show()
 
-    print(f"✅ Loss 로그가 저장되었습니다: {loss_log_path}")
-    print("✅ Loss 그래프가 저장되었습니다: /home/user/kim_js/ReID/KeyTransReID/loss_plot.png")# Update 2025. 04. 12. (토) 23:39:10 KST
+    print(f"Loss logs have been saved: {loss_log_path}")
+    print(f"The Loss graph has been saved: {loss_graph_path}")

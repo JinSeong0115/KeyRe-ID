@@ -1,5 +1,5 @@
 import torch.nn.functional as F
-from loss.softmax_loss import CrossEntropyLabelSmooth, LabelSmoothingCrossEntropy
+from loss.softmax_loss import CrossEntropyLabelSmooth
 from loss.triplet_loss import TripletLoss
 from loss.center_loss import CenterLoss
 import torch
@@ -13,8 +13,8 @@ def make_loss(num_classes):
     xent = CrossEntropyLabelSmooth(num_classes=num_classes)
 
     def loss_func(score, feat, target, target_cam):
-        num_classes = score[0].size(1) if isinstance(score, list) else score.size(1)  # ✅ 동적으로 클래스 수 설정
-        target = target.clamp(0, num_classes - 1)  # ✅ ID 인덱스 범위 제한
+        num_classes = score[0].size(1) if isinstance(score, list) else score.size(1) 
+        target = target.clamp(0, num_classes - 1) 
 
         if isinstance(score, list):
                 ID_LOSS = [xent(scor, target) for scor in score[1:]]
@@ -36,5 +36,5 @@ def make_loss(num_classes):
                 TRI_LOSS = triplet(feat, target)[0]
 
         return ID_LOSS + TRI_LOSS, center
-    
+
     return loss_func, center_criterion

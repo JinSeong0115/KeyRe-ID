@@ -8,7 +8,7 @@ from torchvision.transforms import InterpolationMode
 import torch.nn.functional as F
 from Dataloader import VideoDataset, VideoDataset_inderase
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "Datasets"))
-from MARS_dataset import Mars
+from Datasets.MARS_dataset import Mars
 from Datasets.iLDSVID import iLIDSVID
 from Datasets.PRID_dataset import PRID
 from utility import RandomIdentitySampler

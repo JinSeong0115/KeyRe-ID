@@ -22,7 +22,7 @@ cd KeyTransReID
 Market-1501 Dataset
 To train the model on the Market-1501 dataset:
 ```bash
-python Key_TransReID.py --ViT_path 'pretrained_model.pth'
+python Key_TransReID.py --Dataset_name 'Dataset_name' --ViT_path 'pretrained_model.pth'
 ```
 
 ## 🙏 Acknowledgement

@@ -160,27 +160,3 @@ class Mars(object):
                 else:
                     video[pid][camid] =  img_paths
         return video  # {pid: {camid: [img_path1, img_path2, ...]}}
-    
-if __name__=="__main__":
-    dataset = Mars()
-    print(f"Train 데이터 샘플: {dataset.train[:3]}")  # 앞 5개 데이터 확인
-# from scipy.io import loadmat
-# if __name__=="__main__":
-
-#     # 파일 경로
-#     mat_file_path = "/home/hdd3/kim_js/ReID/CION_ReIDZoo/dataset/MARS/info/tracks_train_info.mat"
-
-#     # .mat 파일 로드
-#     mat_data = loadmat(mat_file_path)
-
-#     # .mat 파일 내부 구조 확인
-#     print("🔍 .mat 파일 키 목록:", mat_data.keys())
-
-#     # 주요 데이터셋 확인
-#     if 'track_train_info' in mat_data:
-#         track_train_info = mat_data['track_train_info']
-#         print(f"✅ track_train_info.shape: {track_train_info.shape}")
-#         print(f"✅ track_train_info 데이터 타입: {type(track_train_info)}")
-#         print("🔍 첫 번째 행 데이터:", track_train_info[0])  # 첫 번째 트랙 정보 확인
-#     else:
-#         print("🚨 track_train_info 키가 .mat 파일에 존재하지 않습니다!")

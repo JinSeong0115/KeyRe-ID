@@ -10,13 +10,11 @@ from Dataloader import VideoDataset, VideoDataset_inderase
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "Datasets"))
 from Datasets.MARS_dataset import Mars
 from Datasets.iLDSVID import iLIDSVID
-from Datasets.PRID_dataset import PRID
 from utility import RandomIdentitySampler
 
 __factory = {
     'Mars':Mars,
-    'iLIDSVID':iLIDSVID,
-    'PRID':PRID
+    'iLIDSVID':iLIDSVID
 }
 
 # Heatmap Preprocessing transform 
@@ -172,7 +170,7 @@ class Heatmap_Dataset(VideoDataset):
         
         heatmaps = torch.stack(heatmap_list, dim=0)  # [clips, seq_len, 6, H, W]
 
-        return imgs, heatmaps, pid, camids
+        return imgs, heatmaps, pid, camids, img_paths
 
 # Heatmap_Dataset_inderase (Train)
 # VideoDataset_inderase --> imgs, pid, camids, labels, selected_img_paths, erased_regions, transform_params_list

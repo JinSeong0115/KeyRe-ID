@@ -1,0 +1,12 @@
+matplotlib==3.10.3
+numpy==2.3.1
+opencv_python==4.11.0.86
+opencv_python_headless==4.11.0.86
+openpifpaf==0.13.11
+Pillow==11.2.1
+scipy==1.16.0
+torch==1.13.1+cu116
+torch_ema==0.3
+torchreid.egg==info
+torchvision==0.14.1+cu116
+tqdm==4.67.1

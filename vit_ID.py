@@ -1,11 +1,9 @@
 import math
-from functools import partial
 from itertools import repeat
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import collections.abc
-
 
 # From PyTorch internals
 def _ntuple(n):
@@ -91,7 +89,39 @@ class Attention(nn.Module):
         x = self.proj(x)
         x = self.proj_drop(x)
         return x
+# class Attention(nn.Module):  # attention map 시각화 위해
+#     def __init__(self, dim, num_heads=8, qkv_bias=False, qk_scale=None, attn_drop=0., proj_drop=0.):
+#         super().__init__()
+#         self.num_heads = num_heads
+#         head_dim = dim // num_heads
+#         self.scale = qk_scale or head_dim ** -0.5
 
+#         self.qkv = nn.Linear(dim, dim * 3, bias=qkv_bias)
+#         self.attn_drop = nn.Dropout(attn_drop)
+#         self.proj = nn.Linear(dim, dim)
+#         self.proj_drop = nn.Dropout(proj_drop)
+
+#         self.last_attn = None  # ✅ attention 저장 변수 추가
+
+#     def forward(self, x):
+#         B, N, C = x.shape
+#         qkv = self.qkv(x).reshape(B, N, 3, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4)
+#         q, k, v = qkv[0], qkv[1], qkv[2]
+
+#         attn = (q @ k.transpose(-2, -1)) * self.scale
+#         attn = attn.softmax(dim=-1)
+
+#         self.last_attn = attn.detach().clone()
+#         attn = self.attn_drop(attn)
+
+#         x = (attn @ v).transpose(1, 2).reshape(B, N, C)
+#         x = self.proj(x)
+#         x = self.proj_drop(x)
+#         return x
+
+#     def get_attention(self):
+#         return self.last_attn  # ✅ 시각화에서 접근 가능
+    
 class Block(nn.Module):
     def __init__(self, dim, num_heads, mlp_ratio=4., qkv_bias=False, qk_scale=None, drop=0., attn_drop=0.,
                  drop_path=0., act_layer=nn.GELU, norm_layer=nn.LayerNorm):
@@ -111,8 +141,7 @@ class Block(nn.Module):
         return x
 
 class PatchEmbed(nn.Module):
-    """ Image to Patch Embedding
-    """
+    """ Image to Patch Embedding"""
     def __init__(self, img_size=224, patch_size=16, in_chans=3, embed_dim=768):
         super().__init__()
         img_size = to_2tuple(img_size)
@@ -146,8 +175,8 @@ class PatchEmbed_overlap(nn.Module):
         self.img_size = img_size
         self.patch_size = patch_size
         self.num_patches = num_patches
-
         self.proj = nn.Conv2d(in_chans, embed_dim, kernel_size=patch_size, stride=stride_size)
+        
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
@@ -161,13 +190,12 @@ class PatchEmbed_overlap(nn.Module):
 
     def forward(self, x):
         B, C, H, W = x.shape
-
         # FIXME look at relaxing size constraints
         assert H == self.img_size[0] and W == self.img_size[1], \
             f"Input image size ({H}*{W}) doesn't match model ({self.img_size[0]}*{self.img_size[1]})."
         x = self.proj(x)
-
         x = x.flatten(2).transpose(1, 2) # [64, 8, 768]
+        
         return x
 
 class TransReID(nn.Module):
@@ -180,7 +208,6 @@ class TransReID(nn.Module):
         self.num_features = self.embed_dim = embed_dim  # num_features for consistency with other models
         self.cam_num = camera
         self.cam_lambda = cam_lambda
-
 
         self.patch_embed = PatchEmbed_overlap(img_size=img_size, patch_size=patch_size, stride_size=stride_size, in_chans=in_chans,embed_dim=embed_dim)
         num_patches = self.patch_embed.num_patches

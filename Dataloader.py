@@ -7,13 +7,11 @@ import torch
 from utility import RandomIdentitySampler, RandomErasing3
 from Datasets.MARS_dataset import Mars
 from Datasets.iLDSVID import iLIDSVID
-from Datasets.PRID_dataset import PRID
 from torchvision.transforms import InterpolationMode
 
 __factory = {
     'Mars':Mars,
-    'iLIDSVID':iLIDSVID,
-    'PRID':PRID
+    'iLIDSVID':iLIDSVID
 }
 
 def train_collate_fn(batch):

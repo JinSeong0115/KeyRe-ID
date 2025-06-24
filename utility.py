@@ -18,7 +18,6 @@ class RandomIdentitySampler(Sampler):
     - num_instances (int): number of instances per identity in a batch.
     - batch_size (int): number of examples in a batch.
     """
-
     def __init__(self, data_source, batch_size, num_instances):
         self.data_source = data_source
         self.batch_size = batch_size
@@ -72,7 +71,6 @@ class RandomIdentitySampler(Sampler):
 
 class AverageMeter(object):
     """Computes and stores the average and current value"""
-
     def __init__(self):
         self.val = 0
         self.avg = 0
@@ -110,7 +108,8 @@ class RandomErasing3(object):
         self.r1 = r1
     def __call__(self, img):
         if random.uniform(0, 1) >= self.probability:
-            return img , 0 
+            return img, 0, (0, 0, 0, 0) 
+        
         for attempt in range(100):
             area = img.size()[1] * img.size()[2]
             target_area = random.uniform(self.sl, self.sh) * area
@@ -118,24 +117,22 @@ class RandomErasing3(object):
             h = int(round(math.sqrt(target_area * aspect_ratio)))
             w = int(round(math.sqrt(target_area / aspect_ratio)))
             if w < img.size()[2] and h < img.size()[1]:
-                x1 = random.randint(0, img.size()[1] - h)
-                y1 = random.randint(0, img.size()[2] - w)
+                x1 = random.randint(0, img.size()[2] - w) 
+                y1 = random.randint(0, img.size()[1] - h) 
                 if img.size()[0] == 3:
-                    img[0, x1:x1 + h, y1:y1 + w] = self.mean[0]
-                    img[1, x1:x1 + h, y1:y1 + w] = self.mean[1]
-                    img[2, x1:x1 + h, y1:y1 + w] = self.mean[2]
+                    img[0, y1:y1 + h, x1:x1 + w] = self.mean[0]
+                    img[1, y1:y1 + h, x1:x1 + w] = self.mean[1]
+                    img[2, y1:y1 + h, x1:x1 + w] = self.mean[2]
                 else:
-                    img[0, x1:x1 + h, y1:y1 + w] = self.mean[0]
-                return img , 1
-            return img , 0         
-        
+                    img[0, y1:y1 + h, x1:x1 + w] = self.mean[0]
+                return img, 1, (x1, y1, w, h) 
+        return img, 0, (0, 0, 0, 0)          
+
 
 def scheduler(optimizer):
     num_epochs = 120
-    
     lr_min = 0.002 * 0.008
     warmup_lr_init = 0.01 * 0.008
-    
     warmup_t = 5
     noise_range = None
 
@@ -169,11 +166,7 @@ def optimizer(model):
             weight_decay = 1e-4
 
         params += [{"params": [value], "lr": lr, "weight_decay": weight_decay}]
-
-    
     optimizer = getattr(torch.optim, 'SGD')(params, momentum=0.9)
-
-    
     
     return optimizer
 
@@ -195,7 +188,6 @@ class Scheduler:
      * https://github.com/pytorch/fairseq/tree/master/fairseq/optim/lr_scheduler
      * https://github.com/allenai/allennlp/tree/master/allennlp/training/learning_rate_schedulers
     """
-
     def __init__(self,
                  optimizer: torch.optim.Optimizer,
                  param_group_field: str,
@@ -286,7 +278,6 @@ class CosineLRScheduler(Scheduler):
     Inspiration from
     https://github.com/allenai/allennlp/blob/master/allennlp/training/learning_rate_schedulers/cosine.py
     """
-
     def __init__(self,
                  optimizer: torch.optim.Optimizer,
                  t_initial: int,
@@ -307,11 +298,11 @@ class CosineLRScheduler(Scheduler):
             optimizer, param_group_field="lr",
             noise_range_t=noise_range_t, noise_pct=noise_pct, noise_std=noise_std, noise_seed=noise_seed,
             initialize=initialize)
-
         assert t_initial > 0
         assert lr_min >= 0
+        
         if t_initial == 1 and t_mul == 1 and decay_rate == 1:
-            logger.warning("Cosine annealing scheduler will have no effect on the learning "
+            logging.warning("Cosine annealing scheduler will have no effect on the learning "
                            "rate since t_initial = t_mul = eta_mul = 1.")
         self.t_initial = t_initial
         self.t_mul = t_mul
@@ -349,9 +340,7 @@ class CosineLRScheduler(Scheduler):
             lr_max_values = [v * gamma for v in self.base_values]
 
             if self.cycle_limit == 0 or (self.cycle_limit > 0 and i < self.cycle_limit):
-                lrs = [
-                    lr_min + 0.5 * (lr_max - lr_min) * (1 + math.cos(math.pi * t_curr / t_i)) for lr_max in lr_max_values
-                ]
+                lrs = [lr_min + 0.5 * (lr_max - lr_min) * (1 + math.cos(math.pi * t_curr / t_i)) for lr_max in lr_max_values]
             else:
                 lrs = [self.lr_min for _ in self.base_values]
 

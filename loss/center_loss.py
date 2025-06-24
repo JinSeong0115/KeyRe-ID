@@ -1,5 +1,4 @@
 from __future__ import absolute_import
-
 import torch
 from torch import nn
 
@@ -45,15 +44,3 @@ class CenterLoss(nn.Module):
         dist = distmat[mask].clamp(min=1e-12, max=1e+12)  # Numerical stability
         loss = dist.mean()  # Compute mean loss
         return loss
-
-
-if __name__ == '__main__':
-    use_gpu = False
-    device = torch.device("cuda" if use_gpu else "cpu")
-
-    center_loss = CenterLoss(use_gpu=use_gpu).to(device)
-    features = torch.rand(16, 2048, device=device)
-    targets = torch.tensor([0, 1, 2, 3, 2, 3, 1, 4, 5, 3, 2, 1, 0, 0, 5, 4], device=device)
-
-    loss = center_loss(features, targets)
-    print(loss)

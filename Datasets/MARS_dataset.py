@@ -1,11 +1,25 @@
+
+from __future__ import print_function, absolute_import
 from collections import defaultdict
 from scipy.io import loadmat
 import os.path as osp
 import numpy as np
 
-
 class Mars(object):
-    root = "/home/user/kim_js/ReID/dataset/MARS"
+    """
+    MARS
+    Reference:
+    Zheng et al. MARS: A Video Benchmark for Large-Scale Person Re-identification. ECCV 2016.
+    
+    Dataset statistics:
+    # identities: 1261
+    # tracklets: 8298 (train) + 1980 (query) + 9330 (gallery)
+    # cameras: 6
+    Args:
+        min_seq_len (int): tracklet with length shorter than this value will be discarded (default: 0).
+    """
+   
+    root  ='/home/user/kim_js/ReID/dataset/MARS' #'/home2/zwjx97/STE-NVAN-master/MARS' #"/home/aishahalsehaim/Desktop/STE-NVAN-master/MARS" 
    
     train_name_path = osp.join(root, 'info/train_name.txt')
     test_name_path = osp.join(root, 'info/test_name.txt')
@@ -13,8 +27,8 @@ class Mars(object):
     track_test_info_path = osp.join(root, 'info/tracks_test_info.mat')
     query_IDX_path = osp.join(root, 'info/query_IDX.mat')
 
-    def __init__(self, min_seq_len=0):
-        self._check_before_run()  # Check if all files are available
+    def __init__(self, min_seq_len=0, ):
+        self._check_before_run()
         
         # prepare meta data
         train_names = self._get_names(self.train_name_path)
@@ -22,15 +36,19 @@ class Mars(object):
         track_train = loadmat(self.track_train_info_path)['track_train_info'] # numpy.ndarray (8298, 4)
         track_test = loadmat(self.track_test_info_path)['track_test_info'] # numpy.ndarray (12180, 4)
         query_IDX = loadmat(self.query_IDX_path)['query_IDX'].squeeze() # numpy.ndarray (1980,)
-        query_IDX -= 1 # index from 0 (becuz python's num start by 0)
+        query_IDX -= 1 # index from 0
         track_query = track_test[query_IDX,:]
         gallery_IDX = [i for i in range(track_test.shape[0]) if i not in query_IDX]
         track_gallery = track_test[gallery_IDX,:]
 
+        train, num_train_tracklets, num_train_pids, num_train_imgs =           self._process_data(train_names, track_train, home_dir='bbox_train', relabel=True, min_seq_len=min_seq_len)
+
         video = self._process_train_data(train_names, track_train, home_dir='bbox_train', relabel=True, min_seq_len=min_seq_len)
-        train, num_train_tracklets, num_train_pids, num_train_imgs = self._process_data(train_names, track_train, home_dir='bbox_train', relabel=True, min_seq_len=min_seq_len)
-        query, num_query_tracklets, num_query_pids, num_query_imgs = self._process_data(test_names, track_query, home_dir='bbox_test', relabel=False, min_seq_len=min_seq_len)
-        gallery, num_gallery_tracklets, num_gallery_pids, num_gallery_imgs = self._process_data(test_names, track_gallery, home_dir='bbox_test', relabel=False, min_seq_len=min_seq_len)
+
+
+        query, num_query_tracklets, num_query_pids, num_query_imgs =           self._process_data(test_names, track_query, home_dir='bbox_test', relabel=False, min_seq_len=min_seq_len)
+
+        gallery, num_gallery_tracklets, num_gallery_pids, num_gallery_imgs =           self._process_data(test_names, track_gallery, home_dir='bbox_test', relabel=False, min_seq_len=min_seq_len)
 
         num_imgs_per_tracklet = num_train_imgs + num_query_imgs + num_gallery_imgs
         min_num = np.min(num_imgs_per_tracklet)
@@ -67,7 +85,6 @@ class Mars(object):
         self.num_train_vids=num_train_tracklets
         self.num_query_vids=num_query_tracklets
         self.num_gallery_vids=num_gallery_tracklets
-        
     def _check_before_run(self):
         """Check if all files are available before going deeper"""
         if not osp.exists(self.root):
@@ -125,8 +142,13 @@ class Mars(object):
                 img_paths = tuple(img_paths)
                 tracklets.append((img_paths, pid, camid))
                 num_imgs_per_tracklet.append(len(img_paths))
+                # if camid in video[pid] :
+                #     video[pid][camid].append(img_paths)  
+                # else:
+                #     video[pid][camid] =  img_paths
 
         num_tracklets = len(tracklets)
+
         return tracklets, num_tracklets, num_pids, num_imgs_per_tracklet
 
     def _process_train_data(self, names, meta_data, home_dir=None, relabel=False, min_seq_len=0):
@@ -159,4 +181,5 @@ class Mars(object):
                     video[pid][camid].extend(img_paths)  
                 else:
                     video[pid][camid] =  img_paths
-        return video  # {pid: {camid: [img_path1, img_path2, ...]}}
+        return video 
+

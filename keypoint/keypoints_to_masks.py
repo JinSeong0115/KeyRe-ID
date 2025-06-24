@@ -3,6 +3,7 @@ import numpy as np
 from collections import OrderedDict
 import sys
 import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from torchreid.utils.imagetools import gkern
 from glob import glob
 import json
@@ -46,6 +47,7 @@ parts_info_per_strat = {
     "joints": (len(joints_dict), list(joints_dict.keys())),
     "joints_gaussian": (len(joints_dict), list(joints_dict.keys())),
 }
+
 
 ########################################
 #         Utility Functions            #
@@ -154,3 +156,73 @@ class KeypointsToMasks:
             kernel = kernel / np.sum(kernel)
             self.gaussian = kernel
         return self.gaussian
+
+########################################
+#         Main Processing Code         #
+########################################
+
+if __name__=="__main__":
+    """
+    A pipeline that processes the entire MARS dataset, reading each image and its corresponding keypoint 
+    pose file (.pose) to generate 2D Gaussian heatmaps, then saves the grouped heatmaps as .npy files.
+    """
+    dataset_root = "/home/user/kim_js/ReID/dataset/MARS"
+    phases = ["bbox_train", "bbox_test"]
+
+    keypoint_root = os.path.join(dataset_root, "keypoints", "MARS")
+    heatmap_root = "/home/user/data/heatmap"
+    
+    # Create KeypointsToMasks instance (using joints_gaussian mode)
+    kp2mask = KeypointsToMasks(g_scale=11, vis_thresh=0.1, vis_continous=False)
+    kp2mask.mode = "joints_gaussian"  # Set mode
+
+    for phase in phases:
+        phase_img_dir = os.path.join(dataset_root, phase)
+        phase_heatmap_dir = os.path.join(heatmap_root, phase)
+        os.makedirs(phase_heatmap_dir, exist_ok=True)
+        
+        for person_id in sorted(os.listdir(phase_img_dir)):
+            person_img_dir = os.path.join(phase_img_dir, person_id)
+            if not os.path.isdir(person_img_dir):
+                continue
+            
+            person_kp_dir = os.path.join(keypoint_root, phase, person_id)
+            if not os.path.exists(person_kp_dir):
+                print(f"Keypoint folder not found: {person_kp_dir}")
+                continue
+            
+            person_heatmap_dir = os.path.join(phase_heatmap_dir, person_id)
+            os.makedirs(person_heatmap_dir, exist_ok=True)
+            
+            for img_file in sorted(os.listdir(person_img_dir)):
+                if not img_file.endswith(".jpg"):
+                    continue
+                
+                img_path = os.path.join(person_img_dir, img_file)
+                # Corresponding keypoint file: Replace ".jpg" with ".pose"
+                kp_file = img_file.replace(".jpg", ".pose")
+                kp_path = os.path.join(person_kp_dir, kp_file)
+                if not os.path.isfile(kp_path):
+                    print(f"Keypoint file not found: {kp_path}")
+                    continue
+                
+                img = cv2.imread(img_path)
+                if img is None:
+                    print(f"Failed to load image: {img_path}")
+                    continue
+                h_img, w_img, _ = img.shape
+
+                with open(kp_path, "r") as f:
+                    kp_data = json.load(f)  # 17x3 array: [[x,y,s], ..., [x17,y17,s17]]
+                kp_array = np.array(kp_data, dtype=np.float32)
+
+                # Generate grouped heatmap (number of channels = len(joints_dict))
+                heatmap = kp2mask(kp_array, (w_img, h_img), (w_img, h_img))
+                # heatmap shape: (num_groups, h_img, w_img)
+                
+                heatmap = np.ascontiguousarray(heatmap)
+                npy_save_path = os.path.join(person_heatmap_dir, img_file.replace(".jpg", ".npy"))
+                np.save(npy_save_path, heatmap)
+                print(f"✅ Saved: {npy_save_path}")
+
+    print("🔹 All heatmap generation completed!")

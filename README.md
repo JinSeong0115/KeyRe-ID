@@ -25,8 +25,8 @@ KeyRe-ID integrates:
 ### Clone the Repository
 
 ```bash
-git clone https://github.com/JinSeong0115/KeyTransReID.git
-cd KeyTransReID
+git clone https://github.com/JinSeong0115/KeyRe-ID.git
+cd KeyRe-ID
 
 ```
 

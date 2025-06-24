@@ -8,6 +8,7 @@ from torchreid.utils.imagetools import gkern
 from glob import glob
 import json
 import matplotlib.pyplot as plt
+from scipy.signal.windows import gaussian
 
 ########################################
 #       PoseTrack Keypoint Grouping     #
@@ -52,6 +53,13 @@ parts_info_per_strat = {
 ########################################
 #         Utility Functions            #
 ########################################
+def gkern(kernlen=21, std=None):
+    if std is None:
+        std = kernlen / 4
+    gkern1d = gaussian(kernlen, std=std).reshape(kernlen, 1)
+    gkern2d = np.outer(gkern1d, gkern1d)
+    return gkern2d
+
 def rescale_keypoints(rf_keypoints, size, new_size):
     """
     Rescale keypoints to a new size.

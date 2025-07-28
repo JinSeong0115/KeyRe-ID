@@ -65,17 +65,18 @@ KeyRe-ID outperforms prior methods on two standard video-based Re-ID benchmarks.
 
 ### 📊 MARS
 
-| Method           | mAP (%) | Rank-1 (%) |
-|------------------|---------|------------|
-| VID-Trans-ReID   | 90.25   | 96.36      |
-| **KeyRe-ID (Ours)** | **91.73** | **97.32**    |
+| Metric     | Value (%) |
+|------------|-----------|
+| mAP        | 91.73     |
+| Rank-1     | 97.32     |
 
 ### 📊 iLIDS-VID
 
-| Method           | Rank-1 (%) | Rank-5 (%) |
-|------------------|------------|------------|
-| VID-Trans-ReID   | 94.67      | 99.50      |
-| **KeyRe-ID (Ours)** | **96.00**    | **100.00**     |
+| Metric     | Value (%) |
+|------------|-----------|
+| Rank-1     | 96.00     |
+| Rank-5     | 100.00    |
+
 
 ---
 
@@ -85,7 +86,7 @@ Download the ImageNet pretrained transformer model:
 - [ViT_base](https://huggingface.co/google/vit-base-patch16-224)
 
 Download the video person Re-ID datasets:  
-- [MARS]([https://drive.google.com/file/d/0B2c3pz5ZDHeRX1FzNXdUMmhzV1U/view](http://www.liangzheng.com.cn/Project/project_mars.html))  
+- [MARS](http://www.liangzheng.com.cn/Project/project_mars.html)  
 - [iLIDS-VID](https://xiatian-zhu.github.io/downloads_qmul_iLIDS-VID_ReID_dataset.html)
 
 

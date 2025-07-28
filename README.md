@@ -1,24 +1,69 @@
 # KeyRe-ID
 
-**KeyRe-ID** is a dual-branch video-based person Re-Identification (Re-ID) framework that leverages human keypoints and transformer architectures to enhance spatio-temporal feature representation. This project improves robustness to pose variation, occlusions, and background clutter in Video-based Re-ID tasks.
+**KeyRe-ID** is a dual-branch video-based person Re-Identification (Re-ID) framework that leverages human keypoints and Vision Transformer (ViT) architectures to improve identity recognition across time and space. This project is designed to be robust against pose variation, occlusion, and cross-view misalignment in multi-camera environments.
 
-## 📖 Project Overview
+---
 
-KeyRe-ID consists of two complementary branches:
+## Overview
 
-- **Global Branch:**  
-  Extracts clip-level global features by applying frame-level attention based on the [CLS] token. This branch models temporal dependencies across frames to generate robust global representations.
+KeyRe-ID tackles the challenge of video-based person re-identification by combining global semantic features and local body-part-aware cues. It uses a Vision Transformer (ViT) to encode spatio-temporal features and integrates pose keypoints to guide fine-grained part-based representations.
 
-- **Local Branch:**  
-  Focuses on fine-grained, part-level features using keypoint-guided part segmentation (KPSM). Human body parts are dynamically segmented via pose estimation, and part-specific transformers capture local temporal coherence.
+This design allows the model to:
 
-KeyRe-ID integrates:
+- Capture clip-level identity semantics
+- Adapt to pose and motion variations
+- Improve matching under occlusion and misalignment
 
-- Keypoint-guided part-aware feature extraction  
-- Transformer-based temporal modeling  
-- Temporal Clip Shift and Shuffle (TCSS) for temporal robustness  
-- Attention mechanisms for frame-level importance learning  
-- Keypoint-guided Part Segmentation Module (KPSM) for dynamic, semantically meaningful body part extraction based on pose estimation  
+KeyRe-ID achieves state-of-the-art performance on MARS and iLIDS-VID datasets, demonstrating its effectiveness in real-world Re-ID scenarios.
+
+---
+
+## Architecture
+
+The overall architecture of KeyRe-ID includes the following components:
+
+- **ViT Backbone**  
+  Encodes each sampled video clip into patch tokens and [CLS] tokens across frames.
+
+- **Global Branch**  
+  Applies Transformer-based temporal attention to [CLS] tokens, producing a clip-level identity embedding.
+
+- **Local Branch**  
+  Utilizes pose keypoints (via a pretrained pose estimator) to create semantic heatmaps. These heatmaps guide patch-level aggregation into part-aware features through the **Keypoint-guided Part Segmentation (KPS)** module.
+
+- **Temporal Clip Shift & Shuffle (TCSS)**  
+  Perturbs the order of patch tokens across frames to enforce temporal invariance and prevent overfitting to fixed motion patterns.
+
+![KeyRe-ID Framework](assets/keyreid_framework.png)
+
+---
+
+## Training and Inference
+
+KeyRe-ID is trained with a composite objective that combines:
+
+- Cross-entropy loss (with label smoothing)
+- Triplet loss
+- Center loss
+- Attention regularization loss
+
+During inference, global and part-level embeddings are concatenated to generate the final descriptor, which is used for retrieval via Euclidean distance.
+
+---
+
+## Performance
+
+| Dataset    | mAP (%) | Rank-1 (%) | Rank-5 (%) |
+|------------|---------|------------|------------|
+| MARS       | 91.73   | 97.32      | –          |
+| iLIDS-VID  | –       | 96.00      | 100.00     |
+
+---
+
+
+
+
+
 
 ## 📦 Installation
 

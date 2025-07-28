@@ -45,7 +45,7 @@ The KPS module transforms keypoint-derived heatmaps into patch-level part import
 
 ---
 
-## 🔎 Retrieval Comparison
+## 🔎 Retrieval Comparison (Ranking List)
 
 <p align="center">
   <img src="assets/ranking_list.png" width="900">

@@ -125,4 +125,23 @@ python Key_ReID.py --Dataset_name 'Mars' --ViT_path 'path_to_pretrained_model.pt
 ## 🙏 Acknowledgement
 - Thanks to AishahAADU, using some implementation from [AishahAADU's repository](https://github.com/AishahAADU/VID-Trans-ReID)  
 
+## 📄 Citation
+
+If you find this work useful, please cite our paper:
+
+**[KeyRe-ID: Keypoint-Guided Person Re-Identification using Part-Aware Representation in Videos](https://arxiv.org/abs/2507.07393)**  
+ArXiv preprint, 2025.
+
+BibTeX:
+```bibtex
+@article{kim2025keyreid,
+  title        = {KeyRe‑ID: Keypoint‑Guided Person Re‑Identification using Part‑Aware Representation in Videos},
+  author       = {Jinseong Kim and Jeonghoon Song and Gyeongseon Baek and Byeongjoon Noh},
+  journal      = {arXiv preprint arXiv:2507.07393},
+  year         = {2025},
+  url          = {https://arxiv.org/abs/2507.07393},
+  eprint       = {2507.07393},
+  archivePrefix= {arXiv}
+}
+```
 

@@ -2,7 +2,6 @@
 
 **KeyRe-ID** is a keypoint-guided video-based person re-identification (Re-ID) framework consisting of global and local branches that leverage human pose information for enhanced spatiotemporal feature learning. By dynamically aligning semantic body parts with patch tokens, our model achieves robust identity discrimination under challenging conditions such as occlusion, pose variation, and viewpoint change.
 
----
 
 ## Overview
 
@@ -59,7 +58,6 @@ The KPS module transforms keypoint-derived heatmaps into patch-level part import
 
 This visual comparison illustrates that **KeyRe-ID** retrieves more accurate identity matches than VID-Trans-ReID, especially under pose variation, viewpoint change, and occlusion.
 
----
 
 ## 🏆 Performance
 
@@ -81,6 +79,16 @@ KeyRe-ID outperforms prior methods on two standard video-based Re-ID benchmarks.
 
 ---
 
+## 🏁 Getting Started
+
+Download the ImageNet pretrained transformer model:  
+- [ViT_base](https://huggingface.co/google/vit-base-patch16-224)
+
+Download the video person Re-ID datasets:  
+- [MARS]([https://drive.google.com/file/d/0B2c3pz5ZDHeRX1FzNXdUMmhzV1U/view](http://www.liangzheng.com.cn/Project/project_mars.html))  
+- [iLIDS-VID](https://xiatian-zhu.github.io/downloads_qmul_iLIDS-VID_ReID_dataset.html)
+
+
 ## ⚙️ Installation
 
 ```bash
@@ -89,7 +97,6 @@ cd KeyRe-ID
 pip install -r requirements.txt
 ```
 
----
 
 ## 🚀 Usage
 
@@ -107,7 +114,7 @@ python Key_ReID.py --Dataset_name 'Mars' --ViT_path 'path_to_pretrained_model.pt
 
 ## ✨ Key Features Summary
 
-✔️ Dual-branch framework: global + part-aware representation
+✔️ Dual-branch framework: global + part-aware representation  
 ✔️ Keypoint-guided Part Segmentation (KPS) for semantic part alignment  
 ✔️ TCSS module for temporal perturbation robustness  
 ✔️ Transformer-based temporal attention for long-range dependency modeling  

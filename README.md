@@ -35,7 +35,6 @@ KeyRe-ID is composed of four core modules:
   <img src="assets/keyreid-framework.png" width="800">
 </p>
 
----
 
 ## KPS Visualization
 
@@ -47,62 +46,50 @@ The KPS module transforms keypoint-derived heatmaps into patch-level part import
 
 ---
 
-## Retrieval Results
+## 🔎 Retrieval Comparison
 
 <p align="center">
-  <img src="assets/retrieval_example.png" width="850">
+  <img src="assets/ranking_list.png" width="900">
 </p>
 
-**Left**: Query frame  
-**Right**: Top-10 retrieved gallery frames  
-**Green boxes** indicate correct identity matches; **red boxes** indicate incorrect matches.
+**Left**: Top-10 retrieval results from **VID-Trans-ReID**  
+**Right**: Top-10 retrieval results from **KeyRe-ID (Ours)**  
+🟩 Green boxes indicate correct identity matches  
+🟥 Red boxes indicate incorrect matches
+
+This visual comparison illustrates that **KeyRe-ID** retrieves more accurate identity matches than VID-Trans-ReID, especially under pose variation, viewpoint change, and occlusion.
 
 ---
 
-## Loss Function
+## 🏆 Performance
 
-KeyRe-ID is trained using a multi-branch objective:
+KeyRe-ID outperforms prior methods on two standard video-based Re-ID benchmarks.
 
-- **Global Loss**
-  - Identity classification (cross-entropy with label smoothing)
-  - Triplet loss
-  - Center loss
-  - Attention regularization
+### 📊 MARS
 
-- **Local Loss (per part)**
-  - Identity classification
-  - Triplet loss
-  - Center loss
+| Method           | mAP (%) | Rank-1 (%) |
+|------------------|---------|------------|
+| VID-Trans-ReID   | 90.25   | 96.36      |
+| **KeyRe-ID (Ours)** | **91.73** | **97.32**    |
 
-The total loss is:
+### 📊 iLIDS-VID
 
-```math
-\mathcal{L}_{\text{total}} = \alpha \cdot \mathcal{L}_{\text{global}} + (1 - \alpha) \cdot \mathcal{L}_{\text{local}}
-
-
-## Performance
-
-| Dataset    | mAP (%) | Rank-1 (%) | Rank-5 (%) |
-|------------|---------|------------|------------|
-| MARS       | 91.73   | 97.32      | –          |
-| iLIDS-VID  | –       | 96.00      | 100.00     |
+| Method           | Rank-1 (%) | Rank-5 (%) |
+|------------------|------------|------------|
+| VID-Trans-ReID   | 94.67      | 99.50      |
+| **KeyRe-ID (Ours)** | **96.00**    | **100.00**     |
 
 ---
 
-
-
-
-
-
-## 📦 Installation
-
-### Clone the Repository
+## ⚙️ Installation
 
 ```bash
 git clone https://github.com/JinSeong0115/KeyRe-ID.git
 cd KeyRe-ID
-
+pip install -r requirements.txt
 ```
+
+---
 
 ## 🚀 Usage
 
@@ -116,12 +103,14 @@ Example for MARS dataset:
 python Key_ReID.py --Dataset_name 'Mars' --ViT_path 'path_to_pretrained_model.pth'
 ```
 
+---
+
 ## ✨ Key Features Summary
 
-✔️ Dual-branch structure for complementary Global and Local semantic feature learning  
-✔️ Keypoint-guided dynamic part segmentation using KPSM for anatomically meaningful body part extraction  
-✔️ Transformer-based temporal modeling with frame-level attention for capturing long-range temporal dependencies  
-✔️ Temporal Clip Shift and Shuffle (TCSS) module to mitigate temporal misalignment and enhance robustness  
+✔️ Dual-branch framework: global + part-aware representation
+✔️ Keypoint-guided Part Segmentation (KPS) for semantic part alignment  
+✔️ TCSS module for temporal perturbation robustness  
+✔️ Transformer-based temporal attention for long-range dependency modeling  
 ✔️ Optimized for video-based person Re-ID benchmarks under occlusion, pose variation, and illumination changes  
 
 

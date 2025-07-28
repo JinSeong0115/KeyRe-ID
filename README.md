@@ -1,55 +1,84 @@
 # KeyRe-ID
 
-**KeyRe-ID** is a dual-branch video-based person Re-Identification (Re-ID) framework that leverages human keypoints and Vision Transformer (ViT) architectures to improve identity recognition across time and space. This project is designed to be robust against pose variation, occlusion, and cross-view misalignment in multi-camera environments.
+**KeyRe-ID** is a keypoint-guided video-based person re-identification (Re-ID) framework consisting of global and local branches that leverage human pose information for enhanced spatiotemporal feature learning. By dynamically aligning semantic body parts with patch tokens, our model achieves robust identity discrimination under challenging conditions such as occlusion, pose variation, and viewpoint change.
 
 ---
 
 ## Overview
 
-KeyRe-ID tackles the challenge of video-based person re-identification by combining global semantic features and local body-part-aware cues. It uses a Vision Transformer (ViT) to encode spatio-temporal features and integrates pose keypoints to guide fine-grained part-based representations.
+KeyRe-ID introduces a dual-branch architecture that jointly learns:
 
-This design allows the model to:
+- **Global clip-level representations** using temporal attention over [CLS] tokens
+- **Part-aware local features** guided by human keypoints and structured via the Keypoint-guided Part Segmentation (KPS) module
 
-- Capture clip-level identity semantics
-- Adapt to pose and motion variations
-- Improve matching under occlusion and misalignment
-
-KeyRe-ID achieves state-of-the-art performance on MARS and iLIDS-VID datasets, demonstrating its effectiveness in real-world Re-ID scenarios.
+This joint learning strategy enables the model to capture both holistic identity semantics and fine-grained anatomical details.
 
 ---
 
 ## Architecture
 
-The overall architecture of KeyRe-ID includes the following components:
+KeyRe-ID is composed of four core modules:
 
 - **ViT Backbone**  
-  Encodes each sampled video clip into patch tokens and [CLS] tokens across frames.
+  Extracts patch and [CLS] tokens from each frame using a Vision Transformer.
 
 - **Global Branch**  
-  Applies Transformer-based temporal attention to [CLS] tokens, producing a clip-level identity embedding.
+  Aggregates [CLS] tokens across sampled frames via temporal attention to form a clip-level identity feature.
 
 - **Local Branch**  
-  Utilizes pose keypoints (via a pretrained pose estimator) to create semantic heatmaps. These heatmaps guide patch-level aggregation into part-aware features through the **Keypoint-guided Part Segmentation (KPS)** module.
+  Utilizes pose keypoints (via PifPaf) to generate part-specific heatmaps. These guide patch-level attention via the **Keypoint-guided Part Segmentation (KPS)** module.
 
-- **Temporal Clip Shift & Shuffle (TCSS)**  
-  Perturbs the order of patch tokens across frames to enforce temporal invariance and prevent overfitting to fixed motion patterns.
+- **Temporal Clip Shift and Shuffle (TCSS)**  
+  Perturbs patch token order across frames to improve robustness under motion variation and temporal misalignment.
 
-![KeyRe-ID Framework](assets/keyreid_framework.png)
+<p align="center">
+  <img src="assets/keyreid-framework.png" width="800">
+</p>
+
+---
+
+## KPS Visualization
+
+<p align="center">
+  <img src="assets/kps-framework.png" width="750">
+</p>
+
+The KPS module transforms keypoint-derived heatmaps into patch-level part importance vectors. These are used to modulate patch token attention per body part, enabling fine-grained part-aware representation learning.
 
 ---
 
-## Training and Inference
+## Retrieval Results
 
-KeyRe-ID is trained with a composite objective that combines:
+<p align="center">
+  <img src="assets/retrieval_example.png" width="850">
+</p>
 
-- Cross-entropy loss (with label smoothing)
-- Triplet loss
-- Center loss
-- Attention regularization loss
-
-During inference, global and part-level embeddings are concatenated to generate the final descriptor, which is used for retrieval via Euclidean distance.
+**Left**: Query frame  
+**Right**: Top-10 retrieved gallery frames  
+**Green boxes** indicate correct identity matches; **red boxes** indicate incorrect matches.
 
 ---
+
+## Loss Function
+
+KeyRe-ID is trained using a multi-branch objective:
+
+- **Global Loss**
+  - Identity classification (cross-entropy with label smoothing)
+  - Triplet loss
+  - Center loss
+  - Attention regularization
+
+- **Local Loss (per part)**
+  - Identity classification
+  - Triplet loss
+  - Center loss
+
+The total loss is:
+
+```math
+\mathcal{L}_{\text{total}} = \alpha \cdot \mathcal{L}_{\text{global}} + (1 - \alpha) \cdot \mathcal{L}_{\text{local}}
+
 
 ## Performance
 

@@ -11,7 +11,7 @@ from heatmap_loader import heatmap_dataloader
 from KeyRe_ID_model import KeyRe_ID
 import torch.nn.functional as F
 
-# ───── 설정 ─────
+# ───── setting ─────
 DATASET = "Mars"
 CHECKPOINT = "../weights/Marsbest.pth"
 SAVE_DIR = "./visualization/attention_map"
@@ -63,13 +63,13 @@ if __name__ == "__main__":
             x = x + model.base.pos_embed[:, :x.size(1), :]              # [BT, 129, C]
             x = model.base.pos_drop(x)
 
-            # attention block 처리 (마지막 block만 시각화)
+            # Handling attention blocks (visualize only the last block)
             for blk in model.base.blocks[:-1]:
                 x = blk(x)
 
-            x = model.base.blocks[-1](x)  # 💡 여기서 attention 저장됨
+            x = model.base.blocks[-1](x)
 
-        # attention 추출
+        # attention Extraction
         attn_map = model.base.blocks[-1].attn.get_attention()  # [BT, heads, 129, 129]
         attn_cls = attn_map[:, :, 0, 1:]  # [BT, heads, 128]
         attn_avg = attn_cls.mean(dim=1)   # [BT, 128]
@@ -89,4 +89,4 @@ if __name__ == "__main__":
             save_path = os.path.join(save_pid_dir, filename)
             cv2.imwrite(save_path, overlay)
 
-    print(f"✅ All QK-based part-attention maps saved to {SAVE_DIR}")
+    print(f"All QK-based part-attention maps saved to {SAVE_DIR}")

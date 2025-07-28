@@ -41,8 +41,8 @@ class iLIDSVID(object):
         root (str): root directory of the dataset
         split_id (int): indicates which split to use. There are totally 10 splits.
     """
-    def __init__(self, root='/home/user/kim_js/ReID/dataset/i-LIDS-VID', split_id=0):
-        # root 경로를 인자로 받아 동적으로 설정
+    def __init__(self, root='../dataset/i-LIDS-VID', split_id=0):
+        # take root path as argument and set it dynamically
         self.root = osp.abspath(osp.expanduser(root))
         self.data_dir = osp.join(self.root, 'sequences')
         self.split_dir = osp.join(self.root, 'train-test people splits')
@@ -51,7 +51,7 @@ class iLIDSVID(object):
         self.cam_1_path = osp.join(self.root, 'sequences/cam1')
         self.cam_2_path = osp.join(self.root, 'sequences/cam2')
 
-        # 데이터셋이 이미 존재하는지 확인
+        # Check if the dataset already exists
         self._check_before_run()
 
         self._prepare_split()

@@ -174,11 +174,11 @@ if __name__=="__main__":
     A pipeline that processes the entire MARS dataset, reading each image and its corresponding keypoint 
     pose file (.pose) to generate 2D Gaussian heatmaps, then saves the grouped heatmaps as .npy files.
     """
-    dataset_root = "/home/user/kim_js/ReID/dataset/MARS"
+    dataset_root = "../dataset/MARS"
     phases = ["bbox_train", "bbox_test"]
 
     keypoint_root = os.path.join(dataset_root, "keypoints", "MARS")
-    heatmap_root = "/home/user/data/heatmap"
+    heatmap_root = "./dataset/heatmap"
     
     # Create KeypointsToMasks instance (using joints_gaussian mode)
     kp2mask = KeypointsToMasks(g_scale=11, vis_thresh=0.1, vis_continous=False)
@@ -231,6 +231,6 @@ if __name__=="__main__":
                 heatmap = np.ascontiguousarray(heatmap)
                 npy_save_path = os.path.join(person_heatmap_dir, img_file.replace(".jpg", ".npy"))
                 np.save(npy_save_path, heatmap)
-                print(f"✅ Saved: {npy_save_path}")
+                print(f"Saved: {npy_save_path}")
 
     print("🔹 All heatmap generation completed!")

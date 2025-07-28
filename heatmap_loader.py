@@ -73,7 +73,7 @@ def heatmap_dataloader(Dataset_name):
         dataset=train_data,
         seq_len=4,
         heatmap_transform=CustomHeatmapTransform([256, 128]),
-        heatmap_root="/home/user/data/heatmap/bbox_train"
+        heatmap_root="./dataset/heatmap/bbox_train"
     )
     train_loader = DataLoader(
         Heatmap_train_set,
@@ -91,14 +91,14 @@ def heatmap_dataloader(Dataset_name):
         seq_len=4,
         transform=val_transforms,
         heatmap_transform=CustomHeatmapTransform([256, 128]),
-        heatmap_root="/home/user/data/heatmap/bbox_test"
+        heatmap_root="./dataset/heatmap/bbox_test"
     )
     g_val_set = Heatmap_Dataset(
         dataset=gallery_data,
         seq_len=4,
         transform=val_transforms,
         heatmap_transform=CustomHeatmapTransform([256, 128]),
-        heatmap_root="/home/user/data/heatmap/bbox_test"
+        heatmap_root="./dataset/heatmap/bbox_test"
     )
     
     return train_loader, len(query_data), num_classes, cam_num, num_train, q_val_set, g_val_set

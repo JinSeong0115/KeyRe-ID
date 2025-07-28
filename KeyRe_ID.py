@@ -198,7 +198,6 @@ if __name__ == '__main__':
                 score, feat, a_vals = model(imgs, heatmaps, pid, cam_label=target_cam)
                 attn_noise = a_vals * erasing_labels
                 attn_loss = attn_noise.sum(dim=1).mean()
-                # attn_loss = ((a_vals - erasing_labels)**2).mean()
                 loss_id, center = loss_fun(score, feat, pid)
                 loss = loss_id + 0.0005 * center + attn_loss
 
@@ -231,12 +230,12 @@ if __name__ == '__main__':
                 print("Epoch[{}] Iteration[{}/{}] Loss: {:.3f}, Acc: {:.3f}, Base Lr: {:.2e}".format(epoch, (Epoch_n+1), len(heatmap_train_loader), loss_meter.avg, acc_meter.avg, scheduler._get_lr(epoch)[0]))
 
         # ---- Evaluation every 10 epochs ----
-        if (epoch >= 20) and (epoch % 5) == 0:
+        if epoch % 10 == 0:
             model.eval()
             cmc, mAP = test(model, q_val_set, g_val_set)
             print('CMC: %.4f, mAP : %.4f' % (cmc, mAP))
 
-            save_dir = '../evaluate'
+            save_dir = './evaluate'
             os.makedirs(save_dir, exist_ok=True)
             save_path = os.path.join(save_dir, 'matrix_best.txt')
             with open(save_path, 'a') as f:

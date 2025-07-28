@@ -19,7 +19,7 @@ class Mars(object):
         min_seq_len (int): tracklet with length shorter than this value will be discarded (default: 0).
     """
    
-    root  ='/home/user/kim_js/ReID/dataset/MARS' #'/home2/zwjx97/STE-NVAN-master/MARS' #"/home/aishahalsehaim/Desktop/STE-NVAN-master/MARS" 
+    root  ='../dataset/MARS'
    
     train_name_path = osp.join(root, 'info/train_name.txt')
     test_name_path = osp.join(root, 'info/test_name.txt')
@@ -41,14 +41,14 @@ class Mars(object):
         gallery_IDX = [i for i in range(track_test.shape[0]) if i not in query_IDX]
         track_gallery = track_test[gallery_IDX,:]
 
-        train, num_train_tracklets, num_train_pids, num_train_imgs =           self._process_data(train_names, track_train, home_dir='bbox_train', relabel=True, min_seq_len=min_seq_len)
+        train, num_train_tracklets, num_train_pids, num_train_imgs = self._process_data(train_names, track_train, home_dir='bbox_train', relabel=True, min_seq_len=min_seq_len)
 
         video = self._process_train_data(train_names, track_train, home_dir='bbox_train', relabel=True, min_seq_len=min_seq_len)
 
 
-        query, num_query_tracklets, num_query_pids, num_query_imgs =           self._process_data(test_names, track_query, home_dir='bbox_test', relabel=False, min_seq_len=min_seq_len)
+        query, num_query_tracklets, num_query_pids, num_query_imgs = self._process_data(test_names, track_query, home_dir='bbox_test', relabel=False, min_seq_len=min_seq_len)
 
-        gallery, num_gallery_tracklets, num_gallery_pids, num_gallery_imgs =           self._process_data(test_names, track_gallery, home_dir='bbox_test', relabel=False, min_seq_len=min_seq_len)
+        gallery, num_gallery_tracklets, num_gallery_pids, num_gallery_imgs = self._process_data(test_names, track_gallery, home_dir='bbox_test', relabel=False, min_seq_len=min_seq_len)
 
         num_imgs_per_tracklet = num_train_imgs + num_query_imgs + num_gallery_imgs
         min_num = np.min(num_imgs_per_tracklet)

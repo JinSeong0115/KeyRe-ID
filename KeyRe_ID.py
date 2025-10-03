@@ -1,13 +1,11 @@
 import os
 import argparse
-import logging
 import time
 import random
 import numpy as np
 import matplotlib.pyplot as plt
 import torch
 from torch.cuda import amp
-import torch.distributed as dist
 from torch_ema import ExponentialMovingAverage
 from heatmap_loader import heatmap_dataloader
 from KeyRe_ID_model import KeyRe_ID
@@ -133,12 +131,14 @@ def test(model, queryloader, galleryloader, pool='avg', use_gpu=True):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="KeyRe-ID")
-    parser.add_argument("--Dataset_name", default="Mars", help="The name of the DataSet", type=str)
+    parser.add_argument("--dataset_name", default="MARS", help="The name of the DataSet", type=str)
     parser.add_argument('--ViT_path', default="./weights/jx_vit_base_p16_224-80ecf9dd.pth", type=str, required=True, help='Path to the pre-trained Vision Transformer model')
+    parser.add_argument("--dataset_root", default="./data", type=str, required=True, help="Path to the dataset root directory")
     args = parser.parse_args()
     
     pretrainpath = str(args.ViT_path)
-    Dataset_name = args.Dataset_name
+    dataset_name = args.dataset_name
+    dataset_root = args.dataset_root
 
     # ---- Set Seeds ----
     torch.manual_seed(1234)
@@ -150,7 +150,7 @@ if __name__ == '__main__':
     torch.backends.cudnn.benchmark = True
     
     # ---- Data & Model ----
-    heatmap_train_loader, _, num_classes, camera_num, _, q_val_set, g_val_set = heatmap_dataloader(Dataset_name)
+    heatmap_train_loader, _, num_classes, camera_num, _, q_val_set, g_val_set = heatmap_dataloader(dataset_name, dataset_root)
 
     model = KeyRe_ID(num_classes=num_classes, camera_num=camera_num, pretrainpath=pretrainpath)
     print("🚀 Running load_param")
@@ -244,15 +244,15 @@ if __name__ == '__main__':
             if cmc_rank1 < cmc:
                 cmc_rank1 = cmc
                 save_path = os.path.join(
-                    '../weights',
-                    Dataset_name + 'best_CMC.pth'
+                    './weights',
+                    dataset_name + 'best_CMC.pth'
                 )
                 torch.save(model.state_dict(), save_path)
             if map < mAP:
                 map = mAP
                 save_path = os.path.join(
-                    '../weights',
-                    Dataset_name + 'best_mAP.pth'
+                    './weights',
+                    dataset_name + 'best_mAP.pth'
                 )
                 torch.save(model.state_dict(), save_path)
 

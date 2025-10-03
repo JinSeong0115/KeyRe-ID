@@ -8,10 +8,11 @@ from heatmap_loader import heatmap_dataloader
 from KeyRe_ID_model import KeyRe_ID
 from torchreid.utils import visualize_ranked_results
 
-# GPU 사용 설정
+# Set GPU Enable
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def evaluate(distmat, q_pids, g_pids, q_camids, g_camids, max_rank=21):
+    # Evaluation logic for person re-identification.
     num_q, num_g = distmat.shape
     if num_g < max_rank:
         max_rank = num_g
@@ -37,7 +38,7 @@ def evaluate(distmat, q_pids, g_pids, q_camids, g_camids, max_rank=21):
 
         num_rel = orig_cmc.sum()
         tmp = orig_cmc.cumsum()
-        tmp = np.asarray([x/(i+1) for i, x in enumerate(tmp)]) * orig_cmc
+        tmp = np.asarray([x / (i + 1) for i, x in enumerate(tmp)]) * orig_cmc
         AP = tmp.sum() / num_rel
         all_AP.append(AP)
 
@@ -48,9 +49,10 @@ def evaluate(distmat, q_pids, g_pids, q_camids, g_camids, max_rank=21):
 
 def test(model, queryloader, galleryloader, use_gpu=True,
          visrank=False, visrank_topk=10, save_dir=None):
+    # Test function to extract features and evaluate the model.
     model.eval()
     with torch.no_grad():
-        # Query features
+        # Extracting query features
         print("Extracting query features:")
         qf, q_pids, q_camids, q_img_paths = [], [], [], []
         for imgs, heatmaps, pids, camids, img_paths in tqdm(queryloader, desc="Query batches", unit="batch"):
@@ -59,18 +61,18 @@ def test(model, queryloader, galleryloader, use_gpu=True,
                 heatmaps = heatmaps.to(device)
             b, s, c, h, w = imgs.size()
             feats = model(imgs, heatmaps, None, cam_label=camids)
-            feats = feats.view(b, -1).mean(dim=0)  # GPU 텐서 유지
+            feats = feats.view(b, -1).mean(dim=0)  # Keep as a GPU tensor
             qf.append(feats)
             q_pids.append(pids.cpu().numpy() if torch.is_tensor(pids) else pids)
             q_camids.extend(camids.cpu().numpy() if torch.is_tensor(camids) else camids)
             q_img_paths.append(img_paths[0])
-        # 스택 후 GPU로 이동
+        # Stack and move to GPU
         qf = torch.stack(qf).to(device)
         q_pids = np.asarray(q_pids)
         q_camids = np.asarray(q_camids)
         print("Query features done.\n")
 
-        # Gallery features
+        # Extracting gallery features
         print("Extracting gallery features:")
         gf, g_pids, g_camids, g_img_paths = [], [], [], []
         for imgs, heatmaps, pids, camids, img_paths in tqdm(galleryloader, desc="Gallery batches", unit="batch"):
@@ -78,18 +80,18 @@ def test(model, queryloader, galleryloader, use_gpu=True,
                 imgs = imgs.to(device)
                 heatmaps = heatmaps.to(device)
             feats = model(imgs, heatmaps, None, cam_label=camids)
-            feats = feats.view(imgs.size(0), -1).mean(dim=0)  # GPU 텐서 유지
+            feats = feats.view(imgs.size(0), -1).mean(dim=0)  # Keep as a GPU tensor
             gf.append(feats)
             g_pids.append(pids.cpu().numpy() if torch.is_tensor(pids) else pids)
             g_camids.extend(camids.cpu().numpy() if torch.is_tensor(camids) else camids)
             g_img_paths.append(img_paths[0])
-        # 스택 후 GPU로 이동
+        # Stack and move to GPU
         gf = torch.stack(gf).to(device)
         g_pids = np.asarray(g_pids)
         g_camids = np.asarray(g_camids)
         print("Gallery features done.\n")
 
-        # Distance matrix (GPU에서 계산)
+        # Compute distance matrix (on GPU)
         print("Computing distance matrix...")
         m, n = qf.size(0), gf.size(0)
         distmat = (
@@ -97,7 +99,7 @@ def test(model, queryloader, galleryloader, use_gpu=True,
             torch.pow(gf, 2).sum(1, keepdim=True).expand(n, m).t()
         )
         distmat.addmm_(qf, gf.t(), beta=1, alpha=-2)
-        distmat = distmat.cpu().numpy()  # NumPy 변환 전 CPU로 이동
+        distmat = distmat.cpu().numpy()  # Move to CPU before converting to NumPy
         print("Distance matrix computed.\n")
 
         # Evaluation
@@ -124,20 +126,16 @@ def test(model, queryloader, galleryloader, use_gpu=True,
     return cmc, mAP
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="KeyRe_ID 시각화 스크립트")
-    parser.add_argument("--Dataset_name", type=str, default="Mars",
-                        help="데이터셋 이름")
-    parser.add_argument("--checkpoint", type=str, required=True,
-                        help="파인튜닝 완료된 체크포인트 (.pth)")
-    parser.add_argument("--visrank", action="store_true",
-                        help="랭킹 결과 시각화 활성화")
-    parser.add_argument("--visrank_topk", type=int, default=10,
-                        help="시각화할 Top-K 개수")
-    parser.add_argument("--save_dir", type=str, default="./visualization",
-                        help="시각화 결과 저장 경로")
+    parser = argparse.ArgumentParser(description="KeyRe_ID Visualization Script")
+    parser.add_argument("--Dataset_name", type=str, default="MARS", help="Name of the dataset")
+    parser.add_argument("--dataset_root", type=str, required=True, help="Root path of the dataset directory")
+    parser.add_argument("--checkpoint", type=str, required=True,help="Path to the fine-tuned checkpoint (.pth)")
+    parser.add_argument("--visrank", action="store_true", help="Enable visualization of ranked results")
+    parser.add_argument("--visrank_topk", type=int, default=10, help="Number of top-K results to visualize")
+    parser.add_argument("--save_dir", type=str, default="./visualization", help="Directory to save visualization results")
     args = parser.parse_args()
 
-    # 시드 고정
+    # Fix random seeds for reproducibility
     torch.manual_seed(1234)
     torch.cuda.manual_seed_all(1234)
     np.random.seed(1234)
@@ -145,31 +143,34 @@ if __name__ == '__main__':
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = True
 
-    # 데이터 로더
+    # Data loaders
     print(f"Loading dataset '{args.Dataset_name}'...")
-    _, _, num_classes, camera_num, _, q_val_set, g_val_set = heatmap_dataloader(args.Dataset_name)
+    _, _, num_classes, camera_num, _, q_val_set, g_val_set = heatmap_dataloader(args.Dataset_name, args.dataset_root)
     print("Dataset loaded.\n")
 
-    # 모델 생성 (pretrainpath=None 으로 ImageNet 가중치 스킵)
+    # Create model (skip ImageNet weights with pretrainpath=None)
     print("Initializing model...")
     model = KeyRe_ID(num_classes=num_classes, camera_num=camera_num, pretrainpath=None)
     model = model.to(device)
 
-    # 체크포인트 로드
+    # Load checkpoint
     print(f"Loading checkpoint '{args.checkpoint}'...")
     state_dict = torch.load(args.checkpoint, map_location="cpu")
     model.load_state_dict(state_dict)
     print("Checkpoint loaded.\n")
 
-    # 테스트 및 시각화
+    # Test and visualize
     print("Starting test & visualization...\n")
     cmc, mAP = test(
         model,
         q_val_set,
         g_val_set,
-        use_gpu=(device.type=="cuda"),
+        use_gpu=(device.type == "cuda"),
         visrank=args.visrank,
         visrank_topk=args.visrank_topk,
         save_dir=args.save_dir
     )
     print(f"Finished → Rank-1: {cmc[0]:.4f}, mAP: {mAP:.4f}")
+
+
+# python ranking_list.py --dataset_root ./data --checkpoint /path/to/your/model.pth

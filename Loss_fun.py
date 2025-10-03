@@ -1,8 +1,7 @@
-import torch.nn.functional as F
 from loss.softmax_loss import CrossEntropyLabelSmooth
 from loss.triplet_loss import TripletLoss
 from loss.center_loss import CenterLoss
-import torch
+
 
 def make_loss(num_classes):   
     feat_dim = 768

@@ -5,13 +5,14 @@ from PIL import Image
 import random
 import torch
 from utility import RandomIdentitySampler, RandomErasing3
-from Datasets.MARS_dataset import Mars
-from Datasets.iLDSVID import iLIDSVID
+from Datasets.MARS import MARS
+from Datasets.iLIDS_VID import iLIDSVID
 from torchvision.transforms import InterpolationMode
 
+
 __factory = {
-    'Mars':Mars,
-    'iLIDSVID':iLIDSVID
+    'MARS': MARS,
+    'iLIDSVID': iLIDSVID
 }
 
 def train_collate_fn(batch):
@@ -148,7 +149,7 @@ class VideoDataset_inderase(Dataset):  # train dataset
         self.seq_len = seq_len
         self.max_length = max_length
         self.erase = RandomErasing3(probability=0.5, mean=[0.485, 0.456, 0.406])
-        print(f"self.erase 타입: {type(self.erase)}")     
+        print(f"self.erase type: {type(self.erase)}")     
 
     def __len__(self):
         return len(self.dataset)

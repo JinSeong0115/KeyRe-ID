@@ -6,6 +6,7 @@ from functools import partial
 from torch.nn import functional as F
 from vit_ID import resize_pos_embed
 
+
 def TCSS(features, shift, b,t):
     # aggregate features at patch level
     features = features.view(b, features.size(1), t*features.size(2))

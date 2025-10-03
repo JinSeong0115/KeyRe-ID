@@ -1,0 +1,1 @@
+Epoch 1, Iteration 400, Loss: 7.274061, Acc: 0.065

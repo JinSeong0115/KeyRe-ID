@@ -8,12 +8,13 @@ from torchvision.transforms import InterpolationMode
 import torch.nn.functional as F
 from Dataloader import VideoDataset, VideoDataset_inderase
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "Datasets"))
-from Datasets.MARS_dataset import Mars
-from Datasets.iLDSVID import iLIDSVID
+from Datasets.MARS import MARS
+from Datasets.iLIDS_VID import iLIDSVID
 from utility import RandomIdentitySampler
 
+
 __factory = {
-    'Mars':Mars,
+    'MARS':MARS,
     'iLIDSVID':iLIDSVID
 }
 
@@ -57,14 +58,19 @@ def val_collate_fn(batch):
     return torch.stack(imgs, dim=0), pids, camids_batch, img_paths
 
 # heatmap_dataloader function
-def heatmap_dataloader(Dataset_name):
+def heatmap_dataloader(Dataset_name, dataset_root):
+    dataset_subdir = Dataset_name
+    dataset_path = os.path.join(dataset_root, dataset_subdir)
+    heatmap_train_root = os.path.join(dataset_path, 'heatmap', 'bbox_train')
+    heatmap_test_root  = os.path.join(dataset_path, 'heatmap', 'bbox_test')
+    
     val_transforms = T.Compose([
         T.Resize([256, 128], interpolation=InterpolationMode.BILINEAR),
         T.ToTensor(),
         T.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
     ])
         
-    dataset = __factory[Dataset_name]()
+    dataset = __factory[Dataset_name](root=dataset_path)
     train_data = dataset.train
     query_data = dataset.query
     gallery_data = dataset.gallery
@@ -73,7 +79,7 @@ def heatmap_dataloader(Dataset_name):
         dataset=train_data,
         seq_len=4,
         heatmap_transform=CustomHeatmapTransform([256, 128]),
-        heatmap_root="./dataset/heatmap/bbox_train"
+        heatmap_root=heatmap_train_root
     )
     train_loader = DataLoader(
         Heatmap_train_set,
@@ -91,14 +97,14 @@ def heatmap_dataloader(Dataset_name):
         seq_len=4,
         transform=val_transforms,
         heatmap_transform=CustomHeatmapTransform([256, 128]),
-        heatmap_root="./dataset/heatmap/bbox_test"
+        heatmap_root=heatmap_test_root
     )
     g_val_set = Heatmap_Dataset(
         dataset=gallery_data,
         seq_len=4,
         transform=val_transforms,
         heatmap_transform=CustomHeatmapTransform([256, 128]),
-        heatmap_root="./dataset/heatmap/bbox_test"
+        heatmap_root=heatmap_test_root
     )
     
     return train_loader, len(query_data), num_classes, cam_num, num_train, q_val_set, g_val_set

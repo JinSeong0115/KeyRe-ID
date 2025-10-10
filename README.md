@@ -104,11 +104,11 @@ pip install -r requirements.txt
 ### Training and Evaluation
 To train or evaluate the model on supported Video-based Re-ID benchmarks (e.g., MARS, iLIDS-VID):
 ```bash
-python Key_ReID.py --Dataset_name 'Dataset_name' --ViT_path 'pretrained_model.pth'
+python KeyRe_ID.py --Dataset_name 'Dataset_name' --ViT_path 'pretrained_model.pth'
 ```
 Example for MARS dataset:
 ```bash
-python Key_ReID.py --Dataset_name 'Mars' --ViT_path 'path_to_pretrained_model.pth'
+python KeyRe_ID.py --Dataset_name 'Mars' --ViT_path 'path_to_pretrained_model.pth'
 ```
 
 ---

@@ -17,7 +17,7 @@ from losses import make_loss
 from utils import AverageMeter, CosineLRScheduler
 from evaluation import extract_features, compute_distance_matrix, evaluate_rank
 
-MARS_WEIGHTS = "os.path.join(REPO_ROOT, "weights/MARSbest_CMC.pth")"
+MARS_WEIGHTS = os.path.join(REPO_ROOT, "weights/MARSbest_CMC.pth")
 ILIDS_ROOT = "./data"
 
 

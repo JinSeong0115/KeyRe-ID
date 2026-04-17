@@ -187,4 +187,4 @@ if __name__ == '__main__':
     mars_dataset = MARS(root=args.dataset_path)
 
 
-# python ./Datasets/MARS.py --dataset_path ./data/MARS
+# python ./datasets/MARS.py --dataset_path ./data/MARS

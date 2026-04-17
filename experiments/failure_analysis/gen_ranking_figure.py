@@ -14,7 +14,7 @@ from matplotlib.patches import Rectangle
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO_ROOT)
 from heatmap_loader import heatmap_dataloader
-from KeyRe_ID_model import KeyRe_ID
+from keyreid import KeyReID
 from evaluation import extract_features, compute_distance_matrix, evaluate_rank
 
 
@@ -49,7 +49,7 @@ def main():
     _, _, num_classes, cam_num, _, q_set, g_set = heatmap_dataloader('MARS', args.dataset_root)
 
     print('Loading model...')
-    model = KeyRe_ID(num_classes=num_classes, camera_num=cam_num, pretrainpath=None)
+    model = KeyReID(num_classes=num_classes, camera_num=cam_num, pretrainpath=None)
     state = torch.load(args.model_path, map_location='cpu', weights_only=False)
     model.load_state_dict(state, strict=True)
     model.cuda().eval()

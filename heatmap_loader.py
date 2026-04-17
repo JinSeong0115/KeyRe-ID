@@ -6,12 +6,12 @@ from torch.utils.data import DataLoader
 import sys
 from torchvision.transforms import InterpolationMode
 import torch.nn.functional as F
-from Dataloader import VideoDataset, VideoDataset_inderase
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "Datasets"))
-from Datasets.MARS import MARS
-from Datasets.iLIDS_VID import iLIDSVID
-from Datasets.DukeMTMC_VideoReID import DukeMTMCVideoReID
-from utility import RandomIdentitySampler
+from dataloader import VideoDataset, VideoDataset_inderase
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "datasets"))
+from datasets.MARS import MARS
+from datasets.iLIDS_VID import iLIDSVID
+from datasets.DukeMTMC_VideoReID import DukeMTMCVideoReID
+from utils import RandomIdentitySampler
 
 
 __factory = {

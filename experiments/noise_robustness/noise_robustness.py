@@ -4,7 +4,7 @@ import os, sys, gc, argparse, numpy as np, torch
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO_ROOT)
 from heatmap_loader import heatmap_dataloader
-from KeyRe_ID_model import KeyRe_ID
+from keyreid import KeyReID
 from evaluation import extract_features, compute_distance_matrix, evaluate_rank
 
 class NoisyWrapper:
@@ -36,7 +36,7 @@ def main():
     print(f'Eval loaders ready: {num_classes} classes, {cam_num} cameras')
 
     print('Loading model...')
-    model = KeyRe_ID(num_classes=num_classes, camera_num=cam_num, pretrainpath=None)
+    model = KeyReID(num_classes=num_classes, camera_num=cam_num, pretrainpath=None)
     state = torch.load(args.model_path, map_location='cpu', weights_only=False)
     model.load_state_dict(state, strict=True)
     model.cuda().eval()

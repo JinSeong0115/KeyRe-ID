@@ -8,7 +8,7 @@
 
 # # 사용자 파일 import
 # from heatmap_loader import heatmap_dataloader
-# from KeyRe_ID_model_part import KeyRe_ID
+# from model_parts import KeyReID
 
 # # ───── 설정 ─────
 # IMAGENET_MEAN = [0.485, 0.456, 0.406]
@@ -59,7 +59,7 @@
     
 #     # 2. 모델 로드
 #     print(f"Loading model weights from {args.trained_weight}...")
-#     model = KeyRe_ID(num_classes=num_classes, camera_num=camera_num, pretrainpath=args.ViT_path)
+#     model = KeyReID(num_classes=num_classes, camera_num=camera_num, pretrainpath=args.ViT_path)
     
 #     if os.path.exists(args.trained_weight):
 #         model.load_state_dict(torch.load(args.trained_weight), strict=False)
@@ -98,7 +98,7 @@
 #                 heatmap_weights = output[1]
 #             else:
 #                 print("\n[Error] Model returns a single value, not a tuple.")
-#                 print("Please modify 'KeyRe_ID_model.py' to return (features, weights).")
+#                 print("Please modify 'keyreid.py' to return (features, weights).")
 #                 return
 
 #         # 첫 번째 배치의 데이터 가져오기
@@ -150,7 +150,7 @@ from torch.utils.data import DataLoader
 
 # 사용자 파일 import (사용자님이 올려주신 코드 기준)
 from heatmap_loader import heatmap_dataloader
-from KeyRe_ID_model_part import KeyRe_ID
+from model_parts import KeyReID
 
 # ───── 설정 ─────
 IMAGENET_MEAN = [0.485, 0.456, 0.406]
@@ -206,7 +206,7 @@ def main():
     
     # 2. 모델 로드
     print(f"Loading model weights from {args.trained_weight}...")
-    model = KeyRe_ID(num_classes=num_classes, camera_num=camera_num, pretrainpath=args.ViT_path)
+    model = KeyReID(num_classes=num_classes, camera_num=camera_num, pretrainpath=args.ViT_path)
     
     if os.path.exists(args.trained_weight):
         model.load_state_dict(torch.load(args.trained_weight), strict=False)

@@ -5,7 +5,7 @@ import torch
 import os
 from tqdm import tqdm
 from heatmap_loader import heatmap_dataloader
-from KeyRe_ID_model import KeyRe_ID
+from keyreid import KeyReID
 from torchreid.utils import visualize_ranked_results
 
 # Set GPU Enable
@@ -126,7 +126,7 @@ def test(model, queryloader, galleryloader, use_gpu=True,
     return cmc, mAP
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="KeyRe_ID Visualization Script")
+    parser = argparse.ArgumentParser(description="KeyReID Visualization Script")
     parser.add_argument("--Dataset_name", type=str, default="MARS", help="Name of the dataset")
     parser.add_argument("--dataset_root", type=str, required=True, help="Root path of the dataset directory")
     parser.add_argument("--checkpoint", type=str, required=True,help="Path to the fine-tuned checkpoint (.pth)")
@@ -150,7 +150,7 @@ if __name__ == '__main__':
 
     # Create model (skip ImageNet weights with pretrainpath=None)
     print("Initializing model...")
-    model = KeyRe_ID(num_classes=num_classes, camera_num=camera_num, pretrainpath=None)
+    model = KeyReID(num_classes=num_classes, camera_num=camera_num, pretrainpath=None)
     model = model.to(device)
 
     # Load checkpoint

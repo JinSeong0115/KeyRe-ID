@@ -5,7 +5,7 @@ import numpy as np
 from tqdm import tqdm
 from torch.utils.data import DataLoader
 from heatmap_loader import heatmap_dataloader
-from KeyRe_ID_model import KeyRe_ID
+from keyreid import KeyReID
 import argparse
 
 # --- Constants and Utility Functions ---
@@ -43,7 +43,7 @@ def main(args):
     )
 
     # Load model
-    model = KeyRe_ID(num_classes=num_cls, camera_num=cam_num, pretrainpath=None)
+    model = KeyReID(num_classes=num_cls, camera_num=cam_num, pretrainpath=None)
     state_dict = torch.load(args.checkpoint, map_location="cpu")
     model.load_state_dict(state_dict, strict=False)
     device = "cuda" if torch.cuda.is_available() else "cpu"

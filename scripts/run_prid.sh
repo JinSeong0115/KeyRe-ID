@@ -33,9 +33,9 @@ from torch_ema import ExponentialMovingAverage
 
 sys.path.insert(0, '.')
 from heatmap_loader import heatmap_dataloader
-from KeyRe_ID_model import KeyRe_ID
-from Loss_fun import make_loss
-from utility import AverageMeter, optimizer as build_optimizer, scheduler as build_scheduler
+from keyreid import KeyReID
+from losses import make_loss
+from utils import AverageMeter, optimizer as build_optimizer, scheduler as build_scheduler
 
 # Seed
 seed = ${SEED}
@@ -45,7 +45,7 @@ torch.backends.cudnn.deterministic = True; torch.backends.cudnn.benchmark = True
 
 # Data
 loader, _, num_classes, cam_num, _, q_set, g_set = heatmap_dataloader('PRID', '${PRID_ROOT}')
-model = KeyRe_ID(num_classes=num_classes, camera_num=cam_num, pretrainpath='${MARS_BEST}')
+model = KeyReID(num_classes=num_classes, camera_num=cam_num, pretrainpath='${MARS_BEST}')
 model.load_param('${MARS_BEST}')
 model.cuda()
 

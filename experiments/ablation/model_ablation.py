@@ -5,15 +5,15 @@ Supports: use_global, use_local, use_tcss, use_kps
 import torch
 import torch.nn as nn
 import copy
-from vit_ID import TransReID, Block
+from vit_backbone import TransReID, Block
 from functools import partial
 from torch.nn import functional as F
-from vit_ID import resize_pos_embed
-from KeyRe_ID_model import TCSS, weights_init_kaiming, weights_init_classifier, KeyRe_ID
+from vit_backbone import resize_pos_embed
+from keyreid import TCSS, weights_init_kaiming, weights_init_classifier, KeyReID
 
 
-class KeyRe_ID_Ablation(KeyRe_ID):
-    """KeyRe_ID with ablation support. Inherits all weights from KeyRe_ID."""
+class KeyReIDAblation(KeyReID):
+    """KeyReID with ablation support. Inherits all weights from KeyReID."""
 
     def __init__(self, num_classes, camera_num, pretrainpath,
                  use_global=True, use_local=True, use_tcss=True, use_kps=True):

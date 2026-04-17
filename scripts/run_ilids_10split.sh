@@ -35,9 +35,9 @@ from torch.cuda import amp
 from torch_ema import ExponentialMovingAverage
 sys.path.insert(0, '.')
 from heatmap_loader import heatmap_dataloader
-from KeyRe_ID_model import KeyRe_ID
-from Loss_fun import make_loss
-from utility import AverageMeter, CosineLRScheduler
+from keyreid import KeyReID
+from losses import make_loss
+from utils import AverageMeter, CosineLRScheduler
 from evaluation import extract_features, compute_distance_matrix, evaluate_rank
 
 seed = ${SEED}
@@ -137,7 +137,7 @@ def train_stage(model, loader, q_set, g_set, num_classes, lr, epochs, patience, 
 splitdir = '${SPLITDIR}'
 
 # Stage 1: MARS pretrained -> iLIDS (lr=0.008)
-model = KeyRe_ID(num_classes=num_classes, camera_num=cam_num, pretrainpath=None)
+model = KeyReID(num_classes=num_classes, camera_num=cam_num, pretrainpath=None)
 load_weights(model, '${MARS_WEIGHTS}')
 model.cuda()
 print(f'[Split ${SPLIT}] Stage1: MARS pretrained, lr=0.008')
@@ -146,7 +146,7 @@ r1_s1, r5_s1, mAP_s1 = train_stage(model, loader, q_set, g_set, num_classes,
 
 # Stage 2: Stage1 best -> fine-tune (lr=0.001)
 best_path = os.path.join(splitdir, 'Stage1_best.pth')
-model2 = KeyRe_ID(num_classes=num_classes, camera_num=cam_num, pretrainpath=None)
+model2 = KeyReID(num_classes=num_classes, camera_num=cam_num, pretrainpath=None)
 model2.load_state_dict(torch.load(best_path, map_location='cpu'), strict=False)
 model2.cuda()
 print(f'[Split ${SPLIT}] Stage2: from Stage1 best, lr=0.001')
@@ -155,7 +155,7 @@ r1_s2, r5_s2, mAP_s2 = train_stage(model2, loader, q_set, g_set, num_classes,
 
 # Stage 3: Stage2 best -> final fine-tune (lr=0.0003)
 best_path2 = os.path.join(splitdir, 'Stage2_best.pth')
-model3 = KeyRe_ID(num_classes=num_classes, camera_num=cam_num, pretrainpath=None)
+model3 = KeyReID(num_classes=num_classes, camera_num=cam_num, pretrainpath=None)
 model3.load_state_dict(torch.load(best_path2, map_location='cpu'), strict=False)
 model3.cuda()
 print(f'[Split ${SPLIT}] Stage3: from Stage2 best, lr=0.0003')

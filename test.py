@@ -5,7 +5,7 @@ import torch
 
 from evaluation import evaluate, test
 from heatmap_loader import heatmap_dataloader
-from KeyRe_ID_model import KeyRe_ID
+from keyreid import KeyReID
 
 
 def parse_args():
@@ -35,7 +35,7 @@ def main():
         args.dataset_root,
     )
 
-    model = KeyRe_ID(num_classes=num_classes, camera_num=camera_num, pretrainpath=args.ViT_path)
+    model = KeyReID(num_classes=num_classes, camera_num=camera_num, pretrainpath=args.ViT_path)
     print("Running load_param")
     model.load_param(args.ViT_path)
 

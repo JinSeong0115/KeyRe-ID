@@ -7,9 +7,9 @@ from torch_ema import ExponentialMovingAverage
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO_ROOT)
 from heatmap_loader import heatmap_dataloader
-from KeyRe_ID_model_parts import KeyRe_ID_Parts
-from Loss_fun import make_loss
-from utility import optimizer as build_optimizer, scheduler as build_scheduler
+from model_parts import KeyReIDParts
+from losses import make_loss
+from utils import optimizer as build_optimizer, scheduler as build_scheduler
 from evaluation import extract_features, compute_distance_matrix, evaluate_rank
 
 def main():
@@ -30,7 +30,7 @@ def main():
     torch.backends.cudnn.deterministic = True; torch.backends.cudnn.benchmark = True
 
     loader, _, nc, cn, _, q_set, g_set = heatmap_dataloader('MARS', DATASET_ROOT)
-    model = KeyRe_ID_Parts(num_classes=nc, camera_num=cn, pretrainpath=VIT_PATH, num_parts=args.num_parts)
+    model = KeyReIDParts(num_classes=nc, camera_num=cn, pretrainpath=VIT_PATH, num_parts=args.num_parts)
     model.load_param(VIT_PATH); model.cuda()
 
     loss_fun, cc = make_loss(num_classes=nc, use_gpu=True)

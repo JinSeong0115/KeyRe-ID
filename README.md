@@ -52,15 +52,15 @@ KeyRe-ID/
 |-- requirements.txt
 |-- train.py                    # main training entry point
 |-- test.py                     # standalone evaluation
-|-- eval_r5.py                  # quick Rank-5 check
+|-- eval_rank5.py                  # quick Rank-5 check
 |-- evaluation.py               # evaluation utilities (CMC / mAP)
-|-- Dataloader.py               # dataset-agnostic loader factory
+|-- dataloader.py               # dataset-agnostic loader factory
 |-- heatmap_loader.py           # video + heatmap loader
-|-- utility.py                  # optimizer / scheduler / meters
-|-- KeyRe_ID_model.py           # full KeyRe-ID model (backbone + KPS + TCSS)
-|-- vit_ID.py                   # ViT-B/16 backbone
-|-- Loss_fun.py                 # combined ID / triplet / center loss
-|-- Datasets/                   # dataset definitions (MARS, iLIDS-VID, PRID, Duke)
+|-- utils.py                  # optimizer / scheduler / meters
+|-- keyreid.py           # full KeyRe-ID model (backbone + KPS + TCSS)
+|-- vit_backbone.py                   # ViT-B/16 backbone
+|-- losses.py                 # combined ID / triplet / center loss
+|-- datasets/                   # dataset definitions (MARS, iLIDS-VID, PRID, Duke)
 |-- keypoint/                   # OpenPifPaf runner + keypoint-to-mask conversion
 |-- loss/                       # individual loss modules
 |-- visualization/              # attention maps / ranking-list rendering
@@ -196,7 +196,7 @@ bash scripts/run_duke_multiseed.sh
 
 ```bash
 python test.py    --dataset MARS --dataset_root ./data/MARS --weights ./weights/MARSbest_CMC.pth
-python eval_r5.py --dataset MARS --dataset_root ./data/MARS --weights ./weights/MARSbest_CMC.pth
+python eval_rank5.py --dataset MARS --dataset_root ./data/MARS --weights ./weights/MARSbest_CMC.pth
 ```
 
 ## Experiments

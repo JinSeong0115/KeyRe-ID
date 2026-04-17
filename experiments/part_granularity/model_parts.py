@@ -5,11 +5,11 @@ Supports: 3, 4, 6 parts by merging existing 6-channel heatmaps.
 import torch
 import torch.nn as nn
 import copy
-from vit_ID import TransReID, Block
+from vit_backbone import TransReID, Block
 from functools import partial
 from torch.nn import functional as F
-from vit_ID import resize_pos_embed
-from KeyRe_ID_model import TCSS, weights_init_kaiming, weights_init_classifier
+from vit_backbone import resize_pos_embed
+from keyreid import TCSS, weights_init_kaiming, weights_init_classifier
 
 
 # Part definitions: which heatmap channels to merge
@@ -29,9 +29,9 @@ PART_CONFIGS = {
 }
 
 
-class KeyRe_ID_Parts(nn.Module):
+class KeyReIDParts(nn.Module):
     def __init__(self, num_classes, camera_num, pretrainpath, num_parts=6):
-        super(KeyRe_ID_Parts, self).__init__()
+        super(KeyReIDParts, self).__init__()
         assert num_parts in PART_CONFIGS, f"num_parts must be one of {list(PART_CONFIGS.keys())}"
         
         self.in_planes = 768

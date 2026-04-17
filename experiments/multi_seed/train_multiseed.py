@@ -10,9 +10,9 @@ import torch
 from torch.cuda import amp
 from torch_ema import ExponentialMovingAverage
 from heatmap_loader import heatmap_dataloader
-from KeyRe_ID_model import KeyRe_ID
-from Loss_fun import make_loss
-from utility import AverageMeter, optimizer as build_optimizer, scheduler as build_scheduler
+from keyreid import KeyReID
+from losses import make_loss
+from utils import AverageMeter, optimizer as build_optimizer, scheduler as build_scheduler
 
 
 def evaluate(distmat, q_pids, g_pids, q_camids, g_camids, max_rank=21):
@@ -99,7 +99,7 @@ if __name__ == '__main__':
 
     # Data & Model (identical to original train.py)
     heatmap_train_loader, _, num_classes, camera_num, _, q_val_set, g_val_set = heatmap_dataloader(args.dataset_name, args.dataset_root)
-    model = KeyRe_ID(num_classes=num_classes, camera_num=camera_num, pretrainpath=args.ViT_path)
+    model = KeyReID(num_classes=num_classes, camera_num=camera_num, pretrainpath=args.ViT_path)
     model.load_param(args.ViT_path)
 
     loss_fun, center_criterion = make_loss(num_classes=num_classes)

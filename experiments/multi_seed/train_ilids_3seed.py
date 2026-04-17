@@ -12,9 +12,9 @@ from torch_ema import ExponentialMovingAverage
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO_ROOT)
 from heatmap_loader import heatmap_dataloader
-from KeyRe_ID_model import KeyRe_ID
-from Loss_fun import make_loss
-from utility import AverageMeter, CosineLRScheduler
+from keyreid import KeyReID
+from losses import make_loss
+from utils import AverageMeter, CosineLRScheduler
 from evaluation import extract_features, compute_distance_matrix, evaluate_rank
 
 MARS_WEIGHTS = "os.path.join(REPO_ROOT, "weights/MARSbest_CMC.pth")"
@@ -142,7 +142,7 @@ def main():
 
     # Stage 1: MARS pretrained -> lr=0.008
     print('[Stage 1] MARS pretrained, lr=0.008, patience=10')
-    model = KeyRe_ID(num_classes=num_classes, camera_num=cam_num, pretrainpath=None)
+    model = KeyReID(num_classes=num_classes, camera_num=cam_num, pretrainpath=None)
     load_mars_weights(model, MARS_WEIGHTS)
     model.cuda()
 
@@ -156,7 +156,7 @@ def main():
 
     # Stage 2: Stage1 best -> lr=0.001
     print('[Stage 2] from Stage1 best, lr=0.001, patience=10')
-    model2 = KeyRe_ID(num_classes=num_classes, camera_num=cam_num, pretrainpath=None)
+    model2 = KeyReID(num_classes=num_classes, camera_num=cam_num, pretrainpath=None)
     model2.load_state_dict(torch.load(s1_path, map_location='cpu', weights_only=False), strict=True)
     model2.cuda()
 
@@ -170,7 +170,7 @@ def main():
 
     # Stage 3: Stage2 best -> lr=0.0003
     print('[Stage 3] from Stage2 best, lr=0.0003, patience=15')
-    model3 = KeyRe_ID(num_classes=num_classes, camera_num=cam_num, pretrainpath=None)
+    model3 = KeyReID(num_classes=num_classes, camera_num=cam_num, pretrainpath=None)
     model3.load_state_dict(torch.load(s2_path, map_location='cpu', weights_only=False), strict=True)
     model3.cuda()
 

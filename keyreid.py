@@ -1,10 +1,10 @@
 import torch
 import torch.nn as nn
 import copy
-from vit_ID import TransReID, Block
+from vit_backbone import TransReID, Block
 from functools import partial
 from torch.nn import functional as F
-from vit_ID import resize_pos_embed
+from vit_backbone import resize_pos_embed
 
 
 def TCSS(features, shift, b,t):
@@ -52,9 +52,9 @@ def weights_init_classifier(m):
             nn.init.constant_(m.bias, 0.0)
 
 
-class KeyRe_ID(nn.Module):
+class KeyReID(nn.Module):
     def __init__(self, num_classes, camera_num, pretrainpath):
-        super(KeyRe_ID, self).__init__()
+        super(KeyReID, self).__init__()
         self.in_planes = 768
         self.num_classes = num_classes
         

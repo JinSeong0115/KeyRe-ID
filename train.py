@@ -11,11 +11,11 @@ from torch_ema import ExponentialMovingAverage
 
 from evaluation import test
 from heatmap_loader import heatmap_dataloader
-from KeyRe_ID_model import KeyRe_ID
-from Loss_fun import make_loss
-from utility import AverageMeter
-from utility import optimizer as build_optimizer
-from utility import scheduler as build_scheduler
+from keyreid import KeyReID
+from losses import make_loss
+from utils import AverageMeter
+from utils import optimizer as build_optimizer
+from utils import scheduler as build_scheduler
 
 
 def parse_args():
@@ -70,7 +70,7 @@ def resolve_device(device_name):
 
 
 def build_model(args, num_classes, camera_num, device):
-    model = KeyRe_ID(num_classes=num_classes, camera_num=camera_num, pretrainpath=args.ViT_path)
+    model = KeyReID(num_classes=num_classes, camera_num=camera_num, pretrainpath=args.ViT_path)
     print("Running load_param")
     model.load_param(args.ViT_path)
     return model.to(device)

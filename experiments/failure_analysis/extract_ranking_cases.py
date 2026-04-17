@@ -51,7 +51,7 @@ def main():
     code_dir = os.environ.get('KEYREID_CODE', '/home/bj_noh/KeyRe-ID')
     sys.path.insert(0, code_dir)
     from heatmap_loader import heatmap_dataloader
-    from KeyRe_ID_model import KeyRe_ID
+    from keyreid import KeyReID
     from evaluation import extract_features, compute_distance_matrix, evaluate_rank
 
     print(f'=== Extracting ranking cases: {args.dataset_name} ===')
@@ -70,7 +70,7 @@ def main():
 
     # Load model
     print('Loading model...')
-    model = KeyRe_ID(num_classes=num_classes, camera_num=cam_num, pretrainpath=None)
+    model = KeyReID(num_classes=num_classes, camera_num=cam_num, pretrainpath=None)
     state = torch.load(args.model_path, map_location='cpu', weights_only=False)
     # Handle mismatched keys (different num_classes/cameras)
     model_state = model.state_dict()

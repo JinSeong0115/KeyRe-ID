@@ -4,10 +4,10 @@ from torch.utils.data import DataLoader, Dataset
 from PIL import Image
 import random
 import torch
-from utility import RandomIdentitySampler, RandomErasing3
-from Datasets.MARS import MARS
-from Datasets.iLIDS_VID import iLIDSVID
-from Datasets.DukeMTMC_VideoReID import DukeMTMCVideoReID
+from utils import RandomIdentitySampler, RandomErasing3
+from datasets.MARS import MARS
+from datasets.iLIDS_VID import iLIDSVID
+from datasets.DukeMTMC_VideoReID import DukeMTMCVideoReID
 from torchvision.transforms import InterpolationMode
 
 

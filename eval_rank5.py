@@ -2,7 +2,7 @@
 import os, sys, argparse, numpy as np, torch
 REPO_ROOT = os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0, REPO_ROOT)
 from heatmap_loader import heatmap_dataloader
-from KeyRe_ID_model import KeyRe_ID
+from keyreid import KeyReID
 from evaluation import extract_features, compute_distance_matrix, evaluate_rank
 
 def test_full_cmc(model, q_set, g_set, pool="avg", use_gpu=True):
@@ -28,7 +28,7 @@ def main():
     for wpath, seed in zip(args.weight_paths, args.seeds):
         print(f"\n{'='*50}")
         print(f"Evaluating seed={seed}: {wpath}")
-        model = KeyRe_ID(num_classes=num_classes, camera_num=cam_num, pretrainpath=None)
+        model = KeyReID(num_classes=num_classes, camera_num=cam_num, pretrainpath=None)
         state = torch.load(wpath, map_location='cpu')
         model.load_state_dict(state, strict=False)
         model.cuda().eval()

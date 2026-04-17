@@ -50,9 +50,9 @@ from torch_ema import ExponentialMovingAverage
 
 sys.path.insert(0, '.')
 from heatmap_loader import heatmap_dataloader
-from KeyRe_ID_model_ablation import KeyRe_ID_Ablation
-from Loss_fun_ablation import make_loss_ablation
-from utility import AverageMeter, optimizer as build_optimizer, scheduler as build_scheduler
+from model_ablation import KeyReIDAblation
+from losses_ablation import make_loss_ablation
+from utils import AverageMeter, optimizer as build_optimizer, scheduler as build_scheduler
 
 # Seed
 torch.manual_seed(1234); torch.cuda.manual_seed_all(1234)
@@ -69,7 +69,7 @@ use_kps = ${USE_KPS}
 loader, _, num_classes, cam_num, _, q_set, g_set = heatmap_dataloader('${DS_NAME}', '${DS_ROOT}')
 
 # Model
-model = KeyRe_ID_Ablation(
+model = KeyReIDAblation(
     num_classes=num_classes, camera_num=cam_num,
     pretrainpath='${MARS_BEST}',
     use_global=use_global, use_local=use_local,

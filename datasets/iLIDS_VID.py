@@ -189,4 +189,4 @@ if __name__ == '__main__':
     ilidsvid_dataset = iLIDSVID(root=args.dataset_path, split_id=args.split_id)
 
 
-# python ./Datasets/iLIDS_VID.py --dataset_path ./data/iLIDS
+# python ./datasets/iLIDS_VID.py --dataset_path ./data/iLIDS

@@ -54,32 +54,12 @@ Under pose variation, viewpoint change, and occlusion, KeyRe-ID retrieves more a
 
 Results across four video-based Re-ID benchmarks (mean ± std over multiple seeds / splits).
 
-### 📊 MARS
-
-| Metric | Value (%) |
-|--------|-----------|
-| Rank-1 | 97.4 ± 0.1 |
-| mAP    | 91.2 ± 0.8 |
-
-### 📊 iLIDS-VID
-
-| Metric | Value (%) |
-|--------|-----------|
-| Rank-1 | 93.3 ± 0.5 |
-| Rank-5 | 99.9 ± 0.0 |
-
-### 📊 DukeMTMC-VideoReID
-
-| Metric | Value (%) |
-|--------|-----------|
-| Rank-1 | 99.9 ± 0.0 |
-| mAP    | 95.9 ± 0.6 |
-
-### 📊 PRID-2011
-
-| Metric | Value (%) |
-|--------|-----------|
-| Rank-1 | 97.4 ± 0.7 |
+| Dataset              |  Rank-1 (%)  |  Rank-5 (%)  |   mAP (%)    |
+|----------------------|:------------:|:------------:|:------------:|
+| MARS                 |  97.4 ± 0.1  |      —       |  91.2 ± 0.8  |
+| iLIDS-VID            |  93.3 ± 0.5  |  99.9 ± 0.0  |      —       |
+| DukeMTMC-VideoReID   |  99.9 ± 0.0  |      —       |  95.9 ± 0.6  |
+| PRID-2011            |  97.4 ± 0.7  |      —       |      —       |
 
 ---
 

@@ -1,0 +1,24 @@
+The estimated poses are stored in an array of size 17x3
+[[x1, y1, s1], ..., [x17, y17, s17]] where si is the joint detection confidence. 
+On the PoseTrack dataset, we set a joint confidence threshold of 0.05 to 0.1 for the pose estimation task. 
+
+The joints of a pose corresponds to the following classes:
+
+class Joints:
+    Nose = 0   # Nose
+    LEye = 1   # Left eye
+    REye = 2   # Right eye
+    LEar = 3   # Left ear
+    REar = 4   # Right ear
+    LS = 5     # Left Shoulder
+    RS = 6     # Right Shoulder
+    LE = 7     # Left Elbow
+    RE = 8     # Right Elbow
+    LW = 9     # Left Wrist
+    RW = 10    # Right Wrist
+    LH = 11    # Left Hip
+    RH = 12    # Right Hip
+    LK = 13    # Left Knee
+    RK = 14    # Right Knee
+    LA = 15    # Left Ankle
+    RA = 16    # Right Ankle

@@ -1,0 +1,27 @@
+# Install the latest torchreid from the GitHub repository
+git+https://github.com/KaiyangZhou/deep-person-reid.git
+
+# Other dependencies
+matplotlib==3.9.4
+numpy==1.26.4
+opencv_python==4.11.0.86
+openpifpaf==0.13.11
+Pillow==11.2.1
+scipy==1.13.1
+torch==1.13.1
+torch_ema==0.3
+torchvision==0.14.1
+tqdm==4.67.1
+protobuf>=3.20.3,<6.0.0
+Cython
+h5py
+six
+tb-nightly
+future
+yacs
+gdown
+flake8
+yapf
+isort==4.3.21
+imageio
+chardet

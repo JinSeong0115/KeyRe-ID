@@ -6,12 +6,28 @@ Official PyTorch implementation of **KeyRe-ID: Keypoint-guided person re-identif
 
 KeyRe-ID is a keypoint-guided Transformer framework for video-based person re-identification that pairs a **global identity branch** with a **pose-adaptive local branch**. Pose, viewpoint and the detection box change where each body part falls inside the crop, so a part representation built on a fixed spatial division carries different body content from one clip to the next. KeyRe-ID decides the spatial extent of each part in every clip.
 
+<p align="center">
+  <img src="assets/framework.png" width="720" alt="Overall framework of KeyRe-ID">
+</p>
+
+*Overall framework.* A video tracklet is divided into *T* segments and one frame is sampled from each to form a clip. The frames are embedded as patch tokens together with a `[CLS]` token and a camera embedding and encoded by a shared ViT backbone, whose output **F** = [**F**<sup>cls</sup>; **F**<sup>patch</sup>] feeds two branches. The global branch aggregates the `[CLS]` tokens over time; the local branch predicts part supports from the patch tokens and reads *K* part features through KPS. The frozen pose encoder supplies reference part maps during training only. At retrieval, the global embedding and the averaged part embedding are each L2-normalized, weighted and concatenated into a 3,840-d descriptor.
+
 - **Global branch.** Frame-level `[CLS]` tokens are aggregated through temporal attention into a holistic clip-level descriptor.
 - **Keypoint-guided Part Selection (KPS).** Each body part is read by a learnable query whose attention is restricted to a spatial support the network predicts for every clip, not to a fixed image stripe.
   - An internal part-support predictor (layer normalization + one linear layer, 6.2K parameters) predicts, for every patch, its support for six anatomical regions, which are merged into *K* = 4 parts (head, torso, arms, legs).
   - It selects which patches a query may read rather than weighting them: each part query uses a binary attention mask defined by its positive support.
   - It is supervised by a region-overlap (soft Dice) objective against part maps rendered offline by an off-the-shelf pose estimator, so part semantics follow the body under pose and viewpoint change. **No pose estimator runs at inference.**
   - The patch descriptors carry each location's temporal trajectory, so a part descriptor is formed over the whole clip in one attention step.
+
+<p align="center">
+  <img src="assets/kps-framework.png" width="900" alt="Keypoint-guided Part Selection (KPS)">
+</p>
+
+*Keypoint-guided Part Selection (KPS).* The patch tokens of the *T* frames are concatenated along the channel axis, so each of the *n* patch descriptors (dimension *T·D*) holds the trajectory of one location across the clip.
+1. **Part-support prediction.** The temporally averaged patch tokens pass through the part-support head, which predicts a support map for each of the *R* = 6 anatomical regions (head, torso, left/right arm, left/right leg).
+2. **Part grouping.** The region supports are max-merged into *K* part groups (head, torso, arms, legs for *K* = 4).
+3. **Support-constrained part attention.** A learned query *q<sub>k</sub>* for each part attends over the patch descriptors in a Transformer encoder block; the mask lets the query read only the patches inside the predicted support of its part.
+4. **Part feature extraction.** Each part query produces a part feature, and batch normalization gives the part embedding *e<sub>k</sub>*<sup>local</sup>.
 - **Retrieval descriptor.** The *K* part embeddings are averaged; the part block and the global block are each L2-normalized and concatenated with equal weight, giving a **3,840-dimensional** descriptor, 3.4 times smaller than concatenating all blocks.
 
 ## Results

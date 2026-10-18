@@ -1,147 +1,161 @@
-# KeyRe-ID
+# KeyRe-ID: Keypoint-Guided Person Re-Identification using Part-Aware Representation in Videos
 
-**KeyRe-ID** is a keypoint-guided video-based person re-identification (Re-ID) framework consisting of global and local branches that leverage human pose information for enhanced spatiotemporal feature learning. By dynamically aligning semantic body parts with patch tokens, our model achieves robust identity discrimination under challenging conditions such as occlusion, pose variation, and viewpoint change.
-
+Official PyTorch implementation of **KeyRe-ID: Keypoint-guided person re-identification using part-aware representation in videos**.
 
 ## Overview
 
-KeyRe-ID introduces a dual-branch architecture that jointly learns:
+KeyRe-ID is a keypoint-guided Transformer framework for video-based person re-identification that pairs a **global identity branch** with a **pose-adaptive local branch**. Pose, viewpoint and the detection box change where each body part falls inside the crop, so a part representation built on a fixed spatial division carries different body content from one clip to the next. KeyRe-ID decides the spatial extent of each part in every clip.
 
-- **Global clip-level representations** using temporal attention over [CLS] tokens
-- **Part-aware local features** guided by human keypoints and structured via the Keypoint-guided Part Segmentation (KPS) module
+- **Global branch.** Frame-level `[CLS]` tokens are aggregated through temporal attention into a holistic clip-level descriptor.
+- **Keypoint-guided Part Selection (KPS).** Each body part is read by a learnable query whose attention is restricted to a spatial support the network predicts for every clip, not to a fixed image stripe.
+  - An internal part-support predictor (layer normalization + one linear layer, 6.2K parameters) predicts, for every patch, its support for six anatomical regions, which are merged into *K* = 4 parts (head, torso, arms, legs).
+  - It selects which patches a query may read rather than weighting them: each part query uses a binary attention mask defined by its positive support.
+  - It is supervised by a region-overlap (soft Dice) objective against part maps rendered offline by an off-the-shelf pose estimator, so part semantics follow the body under pose and viewpoint change. **No pose estimator runs at inference.**
+  - The patch descriptors carry each location's temporal trajectory, so a part descriptor is formed over the whole clip in one attention step.
+- **Retrieval descriptor.** The *K* part embeddings are averaged; the part block and the global block are each L2-normalized and concatenated with equal weight, giving a **3,840-dimensional** descriptor, 3.4 times smaller than concatenating all blocks.
 
-This joint learning strategy enables the model to capture both holistic identity semantics and fine-grained anatomical details.
+## Results
 
----
+Mean ± standard deviation over three seeds (1234 / 5678 / 9012), obtained with the released weights and `tools/test.py`.
 
-## Architecture
+| Dataset | mAP | Rank-1 |
+|---|---|---|
+| MARS | 93.01 ± 0.21 | 98.28 ± 0.12 |
+| DukeMTMC-VideoReID | 97.16 ± 0.06 | 100.00 ± 0.00 |
+| iLIDS-VID | 96.84 ± 0.61 | 94.44 ± 1.02 |
+| PRID-2011 | – | 97.38 ± 0.65 |
 
-KeyRe-ID is composed of four core modules:
+Model size: 219.2M parameters, 104.3 GFLOPs per 4-frame clip (256×128).
 
-- **ViT Backbone**  
-  Extracts patch and [CLS] tokens from each frame using a Vision Transformer.
-
-- **Global Branch**  
-  Aggregates [CLS] tokens across sampled frames via temporal attention to form a clip-level identity feature.
-
-- **Local Branch**  
-  Utilizes pose keypoints (via PifPaf) to generate part-specific heatmaps. These guide patch-level attention via the **Keypoint-guided Part Segmentation (KPS)** module.
-
-- **Temporal Clip Shift and Shuffle (TCSS)**  
-  Perturbs patch token order across frames to improve robustness under motion variation and temporal misalignment.
-
-<p align="center">
-  <img src="assets/keyreid-framework.png" width="800">
-</p>
-
-
-## KPS Visualization
-
-<p align="center">
-  <img src="assets/kps-framework.png" width="750">
-</p>
-
-The KPS module transforms keypoint-derived heatmaps into patch-level part importance vectors. These are used to modulate patch token attention per body part, enabling fine-grained part-aware representation learning.
-
----
-
-## 🔎 Retrieval Comparison (Ranking List)
-
-<p align="center">
-  <img src="assets/ranking_list.png" width="900">
-</p>
-
-**Left**: Top-10 retrieval results from **VID-Trans-ReID**  
-**Right**: Top-10 retrieval results from **KeyRe-ID (Ours)**  
-🟩 Green boxes indicate correct identity matches  
-🟥 Red boxes indicate incorrect matches
-
-This visual comparison illustrates that **KeyRe-ID** retrieves more accurate identity matches than VID-Trans-ReID, especially under pose variation, viewpoint change, and occlusion.
-
-
-## 🏆 Performance
-
-KeyRe-ID outperforms prior methods on two standard video-based Re-ID benchmarks.
-
-### 📊 MARS
-
-| Metric     | Value (%) |
-|------------|-----------|
-| mAP        | 91.73     |
-| Rank-1     | 97.32     |
-
-### 📊 iLIDS-VID
-
-| Metric     | Value (%) |
-|------------|-----------|
-| Rank-1     | 96.00     |
-| Rank-5     | 100.00    |
-
-
----
-
-## 🏁 Getting Started
-
-Download the ImageNet pretrained transformer model:  
-- [ViT_base](https://huggingface.co/google/vit-base-patch16-224)
-
-Download the video person Re-ID datasets:  
-- [MARS](http://www.liangzheng.com.cn/Project/project_mars.html)  
-- [iLIDS-VID](https://xiatian-zhu.github.io/downloads_qmul_iLIDS-VID_ReID_dataset.html)
-
-
-## ⚙️ Installation
+## Installation
 
 ```bash
-git clone https://github.com/JinSeong0115/KeyRe-ID.git
-cd KeyRe-ID
+conda create -n keyreid python=3.9 -y
+conda activate keyreid
+pip install torch==2.1.2 torchvision==0.16.2 --index-url https://download.pytorch.org/whl/cu118
 pip install -r requirements.txt
 ```
 
+Keypoints are only needed for training. They are extracted with OpenPifPaf in a separate environment:
 
-## 🚀 Usage
-
-### Training and Evaluation
-To train or evaluate the model on supported Video-based Re-ID benchmarks (e.g., MARS, iLIDS-VID):
 ```bash
-python train.py --Dataset_name 'Dataset_name' --ViT_path 'pretrained_model.pth'
-```
-Example for MARS dataset:
-```bash
-python train.py --Dataset_name 'Mars' --ViT_path 'path_to_pretrained_model.pth'
+conda create -n pose python=3.9 -y
+conda activate pose
+pip install torch==1.13.1 torchvision==0.14.1 openpifpaf==0.13.11
 ```
 
----
+## Data preparation
 
-## ✨ Key Features Summary
+Datasets: [MARS](http://www.liangzheng.com.cn/Project/project_mars.html), [DukeMTMC-VideoReID](https://github.com/Yu-Wu/DukeMTMC-VideoReID), [iLIDS-VID](https://xiatian-zhu.github.io/downloads_qmul_iLIDS-VID_ReID_dataset.html), [PRID-2011](https://www.tugraz.at/institute/icg/research/team-bischof/learning-recognition-surveillance/downloads/prid11/).
 
-✔️ Dual-branch framework: global + part-aware representation  
-✔️ Keypoint-guided Part Segmentation (KPS) for semantic part alignment  
-✔️ TCSS module for temporal perturbation robustness  
-✔️ Transformer-based temporal attention for long-range dependency modeling  
-✔️ Optimized for video-based person Re-ID benchmarks under occlusion, pose variation, and illumination changes  
+```
+MARS/                      DukeMTMC-VideoReID/       iLIDS-VID/                       PRID-2011/
+├── bbox_train/            ├── train/                ├── sequences/{cam1,cam2}/       ├── multi_shot/{cam_a,cam_b}/
+├── bbox_test/             ├── query/                ├── train-test people splits/    └── splits.json
+└── info/                  └── gallery/              └── splits.json
+```
 
+- Copy `splits/MARS/info/` into the MARS root, and `splits/iLIDS-VID/splits.json` and `splits/PRID-2011/splits.json` into the iLIDS-VID and PRID-2011 roots.
+- **Keypoints (training only).** Run once per dataset; the `.pose` files mirror the image tree:
 
-## 🙏 Acknowledgement
-- Thanks to AishahAADU, using some implementation from [AishahAADU's repository](https://github.com/AishahAADU/VID-Trans-ReID)  
+```bash
+conda activate pose
+python tools/extract_keypoints.py --data_root /path/to/MARS --output_dir /path/to/MARS_keypoints
+```
 
-## 📄 Citation
+The reference part maps are rendered from these files on the fly during training.
 
-If you find this work useful, please cite our paper:
+## Pretrained weights
 
-**[KeyRe-ID: Keypoint-Guided Person Re-Identification using Part-Aware Representation in Videos](https://arxiv.org/abs/2507.07393)**  
-ArXiv preprint, 2025.
+Download `KeyRe-ID_weights.zip` from [Google Drive](https://drive.google.com/drive/folders/12uYQ-2m7Yz60Kjxc0GlNp-QN5F_TGCKB) and unzip it in the repository root (`unzip KeyRe-ID_weights.zip`):
 
-BibTeX:
+```
+weights/
+├── MARS/keyreid_mars_seed{1234,5678,9012}.pth
+├── DukeMTMC-VideoReID/keyreid_duke_seed{1234,5678,9012}.pth
+├── iLIDS-VID/keyreid_ilids_seed{1234,5678,9012}.pth
+└── PRID-2011/keyreid_prid_seed{1234,5678,9012}.pth
+```
+
+For training, download the ImageNet-21K ViT-B/16 weights from [timm](https://github.com/rwightman/pytorch-image-models/releases/download/v0.1-vitjx/jx_vit_base_p16_224-80ecf9dd.pth) to `weights/pretrained/jx_vit_base_p16_224-80ecf9dd.pth`.
+
+## Evaluation
+
+```bash
+python tools/test.py --dataset MARS --data_root /path/to/MARS \
+    --weights weights/MARS/keyreid_mars_seed1234.pth
+```
+
+`--dataset` is one of `MARS`, `DukeMTMC-VideoReID`, `iLIDS-VID`, `PRID-2011`. `scripts/eval_all.sh` evaluates every released checkpoint.
+
+At inference each tracklet is cut into consecutive non-overlapping 4-frame clips, the last one padded by repeating its own frames. The clip embeddings are averaged, and tracklets are ranked by the Euclidean distance between their 3,840-d descriptors (Eq. 17 of the paper).
+
+## Training
+
+**MARS and DukeMTMC-VideoReID** (from ImageNet-21K ViT-B/16, 120 epochs):
+
+```bash
+python tools/train.py --dataset MARS --data_root /path/to/MARS \
+    --keypoint_root /path/to/MARS_keypoints --output_dir outputs/mars_seed1234 --seed 1234
+```
+
+**iLIDS-VID and PRID-2011** (fine-tuned from the MARS model with the best Rank-1, `best_rank1.pth`, saved by `tools/train.py`):
+
+```bash
+python tools/finetune.py --dataset iLIDS-VID --data_root /path/to/iLIDS-VID \
+    --keypoint_root /path/to/iLIDS-VID_keypoints --init outputs/mars_seed1234/best_rank1.pth \
+    --output_dir outputs/ilids_seed1234 --seed 1234
+```
+
+`scripts/train_mars_duke.sh` and `scripts/finetune_small.sh` run all three seeds.
+
+### Main settings
+
+| | |
+|---|---|
+| Backbone | ViT-B/16, patch 16, stride 16, ImageNet-21K |
+| Input | 4-frame clips, 256×128, horizontal flip, random erasing |
+| Optimiser | SGD, lr 0.008, momentum 0.9, weight decay 1e-4, batch 16×4 frames, cosine schedule with 5 warm-up epochs, FP16 |
+| Parts | *K* = 4 (head, torso, arms, legs) from six predicted regions; `--num_parts 3` (head, torso + arms, legs) and `--num_parts 6` (one part per region) are also supported |
+| Reference part maps | OpenPifPaf v0.13.11 (ShuffleNetV2K16); Gaussian kernel 1/11 of the crop width; joints below confidence 0.1 discarded; training only |
+| Loss weights | α = 0.875 (global / part), β = 0.0005 (center), γ = 5.0 (Dice), camera embedding λ = 3.0 |
+| Descriptor | 3,840-d, equal weight (w = 0.5) |
+
+## Repository structure
+
+```
+keyreid/
+├── backbone.py            ViT-B/16 with camera embedding
+├── model.py               KeyRe-ID: global branch, KPS (part-support predictor, restricted part readout)
+├── losses.py              identity / triplet / center losses
+├── evaluation.py          descriptor, CMC and mAP
+├── solver.py              optimiser and learning-rate schedule
+└── data/
+    ├── datasets/          MARS, DukeMTMC-VideoReID, iLIDS-VID, PRID-2011
+    ├── reference_maps.py  keypoints -> reference part maps (six regions)
+    └── video.py           clip sampling, augmentation, identity sampler
+tools/
+├── train.py               MARS / DukeMTMC-VideoReID
+├── finetune.py            iLIDS-VID / PRID-2011
+├── test.py                evaluation
+└── extract_keypoints.py   OpenPifPaf keypoint extraction
+```
+
+## Acknowledgements
+
+This code builds on [VID-Trans-ReID](https://github.com/AishahAADU/VID-Trans-ReID), [TransReID](https://github.com/damo-cv/TransReID) and [OpenPifPaf](https://github.com/openpifpaf/openpifpaf).
+
+## Citation
+
 ```bibtex
 @article{kim2025keyreid,
-  title        = {KeyRe‑ID: Keypoint‑Guided Person Re‑Identification using Part‑Aware Representation in Videos},
-  author       = {Jinseong Kim and Jeonghoon Song and Gyeongseon Baek and Byeongjoon Noh},
-  journal      = {arXiv preprint arXiv:2507.07393},
-  year         = {2025},
-  url          = {https://arxiv.org/abs/2507.07393},
-  eprint       = {2507.07393},
-  archivePrefix= {arXiv}
+  title   = {KeyRe-ID: Keypoint-Guided Person Re-Identification using Part-Aware Representation in Videos},
+  author  = {Jinseong Kim and Jeonghoon Song and Gyeongseon Baek and Byeongjoon Noh},
+  journal = {arXiv preprint arXiv:2507.07393},
+  year    = {2025}
 }
 ```
 
+## License
+
+This project is released under the MIT License.

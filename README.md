@@ -131,7 +131,7 @@ python tools/finetune.py --dataset iLIDS-VID --data_root /path/to/iLIDS-VID \
 |---|---|
 | Backbone | ViT-B/16, patch 16, stride 16, ImageNet-21K |
 | Input | 4-frame clips, 256×128, horizontal flip, random erasing |
-| Optimiser | SGD, lr 0.008, momentum 0.9, weight decay 1e-4, batch 16×4 frames, cosine schedule with 5 warm-up epochs, FP16 |
+| Optimizer | SGD, lr 0.008, momentum 0.9, weight decay 1e-4, batch 16×4 frames, cosine schedule with 5 warm-up epochs, FP16 |
 | Parts | *K* = 4 (head, torso, arms, legs) from six predicted regions; `--num_parts 3` (head, torso + arms, legs) and `--num_parts 6` (one part per region) are also supported |
 | Reference part maps | OpenPifPaf v0.13.11 (ShuffleNetV2K16); Gaussian kernel 1/11 of the crop width; joints below confidence 0.1 discarded; training only |
 | Loss weights | α = 0.875 (global / part), β = 0.0005 (center), γ = 5.0 (Dice), camera embedding λ = 3.0 |
